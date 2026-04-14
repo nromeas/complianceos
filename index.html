@@ -3217,15 +3217,134 @@ function renderSupDash() {
 }
 
 function renderSupImport() {
-  const el=$('sup-import-content'); if(!el)return;
-  el.innerHTML=`<div class="card mb16"><div class="fw7 fs14 c-navy mb4">Ingestion IA — Remplissage automatique</div><div class="fs12 c-steel mb16" style="line-height:1.75">Déposez vos documents (CSRD, bilan social, Kbis, certifications, rapport AFA, bilan carbone) — Claude extrait les champs du Passeport automatiquement.</div><div style="border:2px dashed var(--pale);border-radius:var(--r2);padding:40px;text-align:center;background:var(--cream);margin-bottom:16px"><div style="font-size:32px;margin-bottom:10px">📄</div><div class="fw7 fs14 c-navy mb4">Déposer un document</div><div class="fs12 c-muted mb12">PDF, Word, Excel · 50 MB max</div><button class="btn btn-primary" onclick="simulateImport()">Simuler l'ingestion IA</button></div><div id="sup-import-result"></div></div>`;
+  var el = $('sup-import-content'); if (!el) return;
+  var parts = [];
+  parts.push('<div class="card mb16">');
+  parts.push('<div class="fw7 fs14 c-navy mb4">Ingestion IA \u2014 Remplissage automatique</div>');
+  parts.push('<div class="fs12 c-steel mb16" style="line-height:1.75">D\u00e9posez vos documents \u2014 Claude extrait les champs du Passeport automatiquement.</div>');
+  parts.push('<div id="sup-dropzone" style="border:2px dashed var(--pale);border-radius:var(--r2);padding:40px;text-align:center;background:var(--cream);margin-bottom:16px;cursor:pointer"');
+  parts.push(' ondragover="event.preventDefault();this.style.background=\'var(--blu-l)\'"');
+  parts.push(' ondragleave="this.style.background=\'var(--cream)\'"');
+  parts.push(' ondrop="event.preventDefault();this.style.background=\'var(--cream)\';handleDocDrop(event.dataTransfer.files)"');
+  parts.push(' onclick="document.getElementById(\'sup-file-input\').click()">');
+  parts.push('<div style="font-size:32px;margin-bottom:10px">\ud83d\udcc4</div>');
+  parts.push('<div class="fw7 fs14 c-navy mb4">Cliquer ou glisser un document</div>');
+  parts.push('<div class="fs12 c-muted mb4">PDF, Word, TXT \u00b7 10 MB max</div>');
+  parts.push('<div class="fs11 c-muted">CSRD \u00b7 Bilan social \u00b7 Kbis \u00b7 Certifications \u00b7 Rapport AFA \u00b7 Bilan carbone</div>');
+  parts.push('</div>');
+  parts.push('<input type="file" id="sup-file-input" accept=".pdf,.doc,.docx,.txt,.csv" style="display:none" onchange="handleDocFile(this.files)">');
+  parts.push('<div id="sup-import-result"></div>');
+  parts.push('</div>');
+  el.innerHTML = parts.join('');
 }
 
-async function simulateImport() {
-  const el=$('sup-import-result'); if(!el)return;
-  el.innerHTML=`<div class="flex gap8 p14"><div class="spinner-dark" style="width:18px;height:18px;border-width:2.5px"></div><div class="fs12 c-muted">Extraction IA en cours...</div></div>`;
-  await new Promise(r=>setTimeout(r,1800));
-  el.innerHTML=`<div class="alert-banner alert-ok"><div style="font-size:18px">✓</div><div><div class="fw7 fs13 c-green mb4">12 champs extraits automatiquement</div><div class="fs12 c-steel">Scope 1: 4 200 tCO2e · Scope 2: 1 800 tCO2e · Index F/H: 72/100 · Formation: 28h/sal · ISO 9001: jan.2026 · Kbis vérifié · CA: 320M€</div></div></div><div class="flex gap8 mt12"><button class="btn btn-green btn-sm" onclick="toast('Données importées et sauvegardées','var(--green)')">✓ Valider l'import</button><button class="btn btn-ghost btn-sm" onclick="toast('Champs disponibles pour révision')">Réviser manuellement</button></div>`;
+function handleDocDrop(files) { if (files && files[0]) handleDocFile([files[0]]); }
+
+function handleDocFile(files) {
+  var file = files && files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { toast('Fichier trop lourd (max 10 MB)', 'var(--amber)'); return; }
+
+  var el = $('sup-import-result');
+  if (el) el.innerHTML = '<div class="flex gap8 p14"><div class="spinner-dark" style="width:18px;height:18px;border-width:2.5px"></div><div class="fs12 c-muted">Lecture du document...</div></div>';
+
+  var isPdf = file.name.toLowerCase().endsWith('.pdf');
+  var reader = new FileReader();
+
+  reader.onload = function(e) {
+    if (el) el.innerHTML = '<div class="flex gap8 p14"><div class="spinner-dark" style="width:18px;height:18px;border-width:2.5px"></div><div class="fs12 c-muted">Claude analyse le document...</div></div>';
+
+    if (isPdf) {
+      var base64 = e.target.result.split(',')[1];
+      extractFromPdf(base64, file.name);
+    } else {
+      extractFromText(String(e.target.result).substring(0, 40000), file.name);
+    }
+  };
+
+  reader.onerror = function() { toast('Erreur lecture fichier', 'var(--red)'); };
+  if (isPdf) reader.readAsDataURL(file);
+  else reader.readAsText(file);
+}
+
+function extractFromText(text, filename) {
+  var system = 'Tu es un expert compliance. Analyse ce document et retourne UNIQUEMENT un JSON valide avec les cl\u00e9s pertinentes parmi : siren, raison_sociale, capital, forme, effectif, ca, resultat, scope1, scope2, scope3, energie, renouv, index_fh, tx_at, absenteisme, formation_h, reach, pfas, rohs, code_conduite, alerte, carto_risques, formation_ac, politique_cadeaux, iso9001, iso14001, ecovadis, be, pep, sanctions, lcbft. Valeurs : strings courtes. Omets les cl\u00e9s absentes. JSON UNIQUEMENT.';
+  callClaude(system, 'Fichier : ' + filename + '\n\n' + text, 1000)
+    .then(function(r) { processExtractedData(r, filename); })
+    .catch(function(e) {
+      var el = $('sup-import-result');
+      if (el) el.innerHTML = '<div class="alert-banner alert-warn"><div>Claude indisponible : ' + e.message + '</div></div>';
+    });
+}
+
+function extractFromPdf(base64, filename) {
+  fetch('/.netlify/functions/claude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system: 'Tu es un expert compliance. Extrait les donn\u00e9es du PDF et retourne UNIQUEMENT un JSON valide avec les cl\u00e9s : siren, raison_sociale, capital, forme, effectif, ca, resultat, scope1, scope2, scope3, energie, renouv, index_fh, tx_at, absenteisme, formation_h, reach, pfas, rohs, code_conduite, alerte, carto_risques, formation_ac, iso9001, iso14001, ecovadis, be, pep, sanctions. Omets les cl\u00e9s absentes. JSON UNIQUEMENT.',
+      messages: [{ role: 'user', content: [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+        { type: 'text', text: 'Extrait les donn\u00e9es compliance. JSON uniquement.' }
+      ]}],
+      maxTokens: 1000
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) { if (d.error) throw new Error(d.error); processExtractedData(d.text || '', filename); })
+  .catch(function(e) {
+    var el = $('sup-import-result');
+    if (el) el.innerHTML = '<div class="alert-banner alert-warn">PDF complexe \u2014 essayez un format texte (.txt) pour de meilleurs r\u00e9sultats</div>';
+  });
+}
+
+function processExtractedData(rawResult, filename) {
+  var el = $('sup-import-result');
+  var extracted = {};
+
+  try {
+    var clean = rawResult.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+    extracted = JSON.parse(clean);
+  } catch(e) {
+    var m = rawResult.match(/\{[\s\S]*\}/);
+    if (m) { try { extracted = JSON.parse(m[0]); } catch(e2) {} }
+  }
+
+  var filled = 0;
+  Object.keys(extracted).forEach(function(k) {
+    var v = extracted[k];
+    if (v && v !== 'null' && v !== 'N/A' && v !== '') { SUP_DATA[k] = String(v); filled++; }
+  });
+  if (filled > 0) saveSup();
+
+  if (!el) return;
+
+  if (filled === 0) {
+    el.innerHTML = '<div class="alert-banner alert-warn"><div style="font-size:16px">\u26a0</div>'
+      + '<div><div class="fw7 fs13">Aucun champ extrait</div>'
+      + '<div class="fs12 c-muted">Document non reconnu ou vide. Essayez un autre format.</div></div></div>';
+    return;
+  }
+
+  var rows = Object.keys(extracted)
+    .filter(function(k) { return extracted[k] && extracted[k] !== 'null'; })
+    .map(function(k) {
+      return '<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--bd2)">'
+        + '<span style="font-size:11px;font-weight:600;color:var(--navy);min-width:110px;flex-shrink:0">' + k + '</span>'
+        + '<span style="font-size:12px;color:var(--steel)">' + String(extracted[k]).substring(0,60) + '</span></div>';
+    }).join('');
+
+  el.innerHTML = '<div class="alert-banner alert-ok" style="flex-direction:column;align-items:flex-start">'
+    + '<div class="flex gap8 mb12"><div style="font-size:18px">\u2713</div>'
+    + '<div class="fw7 fs13 c-green">' + filled + ' champs extraits depuis ' + filename + '</div></div>'
+    + '<div style="max-height:180px;overflow-y:auto;width:100%">' + rows + '</div>'
+    + '<div class="flex gap8 mt12">'
+    + '<button class="btn btn-green btn-sm" onclick="refreshCurrentDomainTab();toast(\'Champs mis \u00e0 jour\',\'var(--green)\')">Voir dans le passeport \u2192</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="supTab(\'d1\')">V\u00e9rifier manuellement</button>'
+    + '</div></div>';
+
+  refreshCurrentDomainTab();
+  toast('\u2713 ' + filled + ' champs extraits automatiquement', 'var(--green)');
 }
 
 function renderDomainTab(domainId) {
@@ -9526,9 +9645,55 @@ const SANCTIONS_DB = {
 // 3. MOTEUR DE LOOKUP — simule un appel API + retourne les champs
 // ────────────────────────────────────────────────────────────
 async function lookupSiren(siren) {
-  const cleanSiren = siren.replace(/\s/g, '');
-  await new Promise(r => setTimeout(r, 900)); // simule latence API
-  return INPI_DB[cleanSiren] || null;
+  const cleanSiren = siren.replace(/\s/g, '').replace(/-/g, '');
+  if (!cleanSiren || cleanSiren.length < 9) return null;
+  try {
+    const res  = await fetch('/.netlify/functions/siren?siren=' + cleanSiren);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // Mapper la réponse Pappers/INSEE vers le format attendu
+    const d = data;
+    const dirigeant0 = (d.dirigeants || [])[0] || {};
+    const be0        = (d.beneficiaires || [])[0] || {};
+
+    return {
+      // Champs identité (d1)
+      raison_sociale: d.raison_sociale || "",
+      siren:          cleanSiren,
+      tva:            d.tva || "",
+      capital:        d.capital || "",
+      forme:          d.forme || "",
+      effectif:       d.effectif || "",
+      adresse:        d.adresse || "",
+      code_naf:       d.activite || "",
+      activite:       d.activite_libelle || "",
+      date_creation:  d.date_creation || "",
+
+      // Dirigeants
+      dirigeant_nom:  dirigeant0.nom ? dirigeant0.nom.trim() : "",
+      dirigeant_role: dirigeant0.role || "",
+
+      // Bénéficiaires effectifs (d6)
+      be:  be0.nom ? be0.nom.trim() + (be0.pct ? " (" + be0.pct + "%)" : "") : "",
+      pep: "À vérifier",
+
+      // Procédures collectives → alerte
+      procedures: d.procedures_actives ? "⚠ Procédure collective en cours" : "Aucune",
+
+      // Financier
+      ca:      d.ca || "",
+      resultat:d.resultat || "",
+
+      // Source
+      _source: d.source || "INPI"
+    };
+  } catch(e) {
+    console.warn('[SIREN] lookup error:', e.message);
+    // Fallback sur INPI_DB local si disponible
+    return (typeof INPI_DB !== 'undefined' && INPI_DB[cleanSiren]) || null;
+  }
 }
 
 async function lookupECHA(nace) {
@@ -10034,59 +10199,83 @@ function renderSirenLookupWidget() {
 }
 
 async function triggerSirenLookup() {
-  const siren = $('siren-input')?.value?.trim();
+  var sirenEl = $('siren-input');
+  var siren   = sirenEl ? sirenEl.value.trim().replace(/\s/g,'').replace(/-/g,'') : '';
   if (!siren || siren.length < 9) { toast('Saisissez un SIREN valide (9 chiffres)', 'var(--amber)'); return; }
 
-  const btn = $('siren-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Enrichissement en cours...'; }
+  var btn        = $('siren-btn');
+  var progressEl = $('siren-progress');
+  var reportEl   = $('siren-report');
 
-  const progressEl = $('siren-progress');
-  const reportEl   = $('siren-report');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enrichissement en cours...'; }
+  if (progressEl) progressEl.innerHTML = '<div class="flex gap8 p14"><div class="spinner-dark" style="width:16px;height:16px;border-width:2px"></div><div class="fs12 c-muted">Interrogation INPI / Pappers...</div></div>';
   if (reportEl) reportEl.innerHTML = '';
 
-  try {
-    const { filled, report, sources } = await autoFillFromSiren(siren, 'industria', progressEl);
+  fetch('/.netlify/functions/siren?siren=' + siren)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (progressEl) progressEl.innerHTML = '';
+      if (data.error) { toast('Erreur SIREN : ' + data.error, 'var(--red)'); return; }
 
-    if (progressEl) progressEl.innerHTML = '';
+      var map = {
+        siren:            data.siren,
+        raison_sociale:   data.raison_sociale,
+        forme:            data.forme,
+        capital:          data.capital,
+        effectif:         data.effectif,
+        tva:              data.tva,
+        activite:         data.activite_libelle || data.activite,
+        date_creation:    data.date_creation,
+        ca:               data.ca,
+        resultat:         data.resultat
+      };
 
-    if (reportEl) {
-      reportEl.innerHTML = `
-      <div style="background:rgba(42,122,84,.15);border:1.5px solid rgba(42,122,84,.3);border-radius:var(--r3);padding:14px 16px">
-        <div class="flex gap10 mb12">
-          <div style="font-size:18px">✓</div>
-          <div>
-            <div class="fw7 fs13" style="color:#6EE7B7">${filled} champs remplis automatiquement</div>
-            <div class="fs12" style="color:rgba(255,255,255,.5);margin-top:2px">Sources : ${sources.join(', ')} · Propagation cross-modules effectuée</div>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:160px;overflow-y:auto">
-          ${report.filled.slice(0,20).map(f =>
-            `<div style="display:flex;gap:6px;padding:4px 0">
-              <span style="color:rgba(110,231,183,.6);font-size:10px;flex-shrink:0">✓</span>
-              <span style="font-size:11px;color:rgba(255,255,255,.7);font-family:'DM Mono',monospace">${f.key}</span>
-              <span style="font-size:10px;color:rgba(255,255,255,.3);margin-left:auto;flex-shrink:0">${f.source}</span>
-            </div>`
-          ).join('')}
-          ${report.filled.length > 20 ? `<div style="font-size:11px;color:rgba(255,255,255,.3);grid-column:span 2">... et ${report.filled.length - 20} autres champs</div>` : ''}
-        </div>
-        <div class="flex gap6 mt12">
-          <button class="btn btn-sm" style="background:rgba(42,122,84,.3);color:#6EE7B7;border:1px solid rgba(42,122,84,.4)" onclick="refreshCurrentDomainTab()">Voir les champs mis à jour →</button>
-          <button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.6)" onclick="toast('Rapport exporté','var(--green)')">Exporter rapport</button>
-        </div>
-      </div>`;
-    }
+      if (data.beneficiaires && data.beneficiaires.length) {
+        var be0 = data.beneficiaires[0];
+        map.be = be0.nom + (be0.pct ? ' (' + be0.pct + '%)' : '');
+      }
+      if (data.dirigeants && data.dirigeants.length) {
+        map.dirigeant_principal = data.dirigeants[0].nom + ' — ' + data.dirigeants[0].role;
+      }
+      if (data.procedures_actives) {
+        map.procedures_collectives = 'OUI — vérification requise';
+      }
 
-    // Re-render le domaine actif pour afficher les nouveaux badges
-    refreshCurrentDomainTab();
-    toast(`✓ ${filled} champs enrichis automatiquement — ${sources.join(', ')}`, 'var(--green)');
+      var filled = 0;
+      Object.keys(map).forEach(function(k) {
+        if (map[k]) { SUP_DATA[k] = map[k]; filled++; }
+      });
+      if (filled > 0) saveSup();
 
-  } catch(e) {
-    console.error('[AutoFill]', e);
-    if (progressEl) progressEl.innerHTML = '';
-    toast('Enrichissement partiellement complété', 'var(--amber)');
-  }
+      var source = data.source || 'INPI';
+      var rpt = '<div style="background:rgba(42,122,84,.15);border:1.5px solid rgba(42,122,84,.3);border-radius:var(--r3);padding:14px 16px">'
+        + '<div class="flex gap10 mb10"><div style="font-size:18px">✓</div>'
+        + '<div><div class="fw7 fs13" style="color:#6EE7B7">' + filled + ' champs remplis automatiquement</div>'
+        + '<div class="fs12" style="color:rgba(255,255,255,.5);margin-top:2px">Source : ' + source
+        + (data.procedures_actives ? ' · ⚠ Procédure collective détectée' : '') + '</div></div></div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;max-height:120px;overflow-y:auto">';
 
-  if (btn) { btn.disabled = false; btn.textContent = 'Enrichir automatiquement →'; }
+      Object.keys(map).forEach(function(k) {
+        if (map[k]) rpt += '<div style="display:flex;gap:6px;padding:3px 0">'
+          + '<span style="color:rgba(110,231,183,.6);font-size:10px">✓</span>'
+          + '<span style="font-size:11px;color:rgba(255,255,255,.7)">' + k + '</span></div>';
+      });
+
+      rpt += '</div><div class="flex gap6 mt10">'
+        + '<button class="btn btn-sm" style="background:rgba(42,122,84,.3);color:#6EE7B7;border:1px solid rgba(42,122,84,.4)" '
+        + 'onclick="refreshCurrentDomainTab()">Voir les champs mis à jour →</button></div></div>';
+
+      if (reportEl) reportEl.innerHTML = rpt;
+      refreshCurrentDomainTab();
+      toast('✓ ' + filled + ' champs enrichis depuis ' + source, 'var(--green)');
+    })
+    .catch(function(e) {
+      if (progressEl) progressEl.innerHTML = '';
+      toast('Erreur SIREN : ' + e.message, 'var(--red)');
+    })
+    .finally(function() {
+      if (btn) { btn.disabled = false; btn.textContent = 'Enrichir automatiquement →'; }
+    });
 }
 
 function refreshCurrentDomainTab() {
