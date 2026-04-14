@@ -3341,19 +3341,21 @@ function runBatchAML() {
 // ============================================================
 // AI CORE — Claude API
 // ============================================================
-async function callClaude(system, userMsg, maxTokens=1000) {
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: maxTokens,
-      system,
-      messages: [{ role: 'user', content: userMsg }]
-    })
-  });
-  const data = await resp.json();
-  return data.content?.map(c => c.text || '').join('') || '';
+async function callClaude(system, userMsg, maxTokens=1500) {
+  try {
+    const resp = await fetch('/.netlify/functions/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system, userMsg, maxTokens })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    return data.text || '';
+  } catch(e) {
+    console.error('[COS] callClaude:', e.message);
+    throw e;
+  }
 }
 
 function showAIResult(elId, txt, title) {
