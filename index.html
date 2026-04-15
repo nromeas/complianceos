@@ -2192,6 +2192,13 @@ if (window._COS_TOKEN) {
 
 
 <script>
+function cosEscape(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+// Production logger
+window._COS_DEBUG = false;
+function cosLog() { if (window._COS_DEBUG) console.log.apply(console, arguments); }
+function cosWarn() { if (window._COS_DEBUG) console.warn.apply(console, arguments); }
+
 
 // ============================================================
 // CORE UTILITIES
@@ -3226,41 +3233,6 @@ function renderSupImport(){
   el.innerHTML='<div class="card mb16"><div class="fw7 fs14 c-navy mb4">Ingestion IA \u2014 Remplissage automatique</div><div class="fs12 c-steel mb16" style="line-height:1.75">D\u00e9posez vos documents \u2014 Claude extrait les champs automatiquement.</div><div style="border:2px dashed var(--pale);border-radius:var(--r2);padding:40px;text-align:center;background:var(--cream);margin-bottom:16px;cursor:pointer" ondragover="event.preventDefault();this.style.background=\'var(--blu-l)\'" ondragleave="this.style.background=\'var(--cream)\'" ondrop="event.preventDefault();this.style.background=\'var(--cream)\';handleDocDrop(event.dataTransfer.files)" onclick="document.getElementById(\'sup-file-input\').click()"><div style="font-size:32px;margin-bottom:10px">\uD83D\uDCC4</div><div class="fw7 fs14 c-navy mb4">Cliquer ou glisser un document</div><div class="fs12 c-muted mb4">PDF \u00b7 Word \u00b7 TXT \u00b7 10 MB max</div></div><input type="file" id="sup-file-input" accept=".pdf,.doc,.docx,.txt,.csv" style="display:none" onchange="handleDocFile(this.files)"><div id="sup-import-result"></div></div>';
 }
 function handleDocDrop(f){if(f&&f[0])handleDocFile([f[0]]);}
-function handleDocFile(files){
-  var file=files&&files[0];if(!file)return;
-  if(file.size>10485760){toast('Fichier trop lourd (max 10 MB)','var(--amber)');return;}
-  var el=$('sup-import-result'),name=file.name.toLowerCase();
-  var isWord=name.endsWith('.docx')||name.endsWith('.doc'),isPdf=name.endsWith('.pdf');
-  if(el)el.innerHTML='<div class="flex gap8 p14"><div class="spinner-dark" style="width:18px;height:18px;border-width:2.5px"></div><div class="fs12 c-muted">Lecture du document...</div></div>';
-  if(isWord){
-    var doExtract=function(){
-      var r2=new FileReader();
-      r2.onload=function(e){
-        if(el)el.innerHTML='<div class="flex gap8 p14"><div class="spinner-dark" style="width:18px;height:18px;border-width:2.5px"></div><div class="fs12 c-muted">Claude analyse le document Word...</div></div>';
-        mammoth.extractRawText({arrayBuffer:e.target.result}).then(function(res){
-          var text=res.value||'';
-          if(!text.trim()){if(el)el.innerHTML='<div class="alert-banner alert-warn">Document Word vide</div>';return;}
-          extractFromText(text.substring(0,40000),file.name);
-        }).catch(function(err){if(el)el.innerHTML='<div class="alert-banner alert-warn">Erreur Word: '+err.message+'</div>';});
-      };
-      r2.readAsArrayBuffer(file);
-    };
-    if(typeof mammoth==='undefined'){
-      var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
-      s.onload=doExtract;s.onerror=function(){toast('Impossible de charger mammoth.js','var(--red)');};
-      document.head.appendChild(s);
-    }else{doExtract();}
-    return;
-  }
-  var reader=new FileReader();
-  reader.onload=function(e){
-    if(el)el.innerHTML='<div class="flex gap8 p14"><div class="spinner-dark" style="width:18px;height:18px;border-width:2.5px"></div><div class="fs12 c-muted">Claude analyse le document...</div></div>';
-    if(isPdf)extractFromPdf(e.target.result.split(',')[1],file.name);
-    else extractFromText(String(e.target.result).substring(0,40000),file.name);
-  };
-  reader.onerror=function(){toast('Erreur lecture','var(--red)');};
-  if(isPdf)reader.readAsDataURL(file);else reader.readAsText(file);
-}
 function extractFromText(text,filename){
   callClaude('Tu es expert compliance. Retourne UNIQUEMENT un JSON valide avec les cles: siren,raison_sociale,capital,forme,effectif,ca,resultat,scope1,scope2,scope3,energie,renouv,index_fh,tx_at,absenteisme,formation_h,reach,pfas,rohs,code_conduite,alerte,carto_risques,formation_ac,iso9001,iso14001,ecovadis,be,pep,sanctions,lcbft. JSON UNIQUEMENT.','Fichier: '+filename+'\n\n'+text,1000)
     .then(function(r){processExtractedData(r,filename);})
@@ -3292,12 +3264,6 @@ async function simulateImport() {
   el.innerHTML=`<div class="alert-banner alert-ok"><div style="font-size:18px">✓</div><div><div class="fw7 fs13 c-green mb4">12 champs extraits automatiquement</div><div class="fs12 c-steel">Scope 1: 4 200 tCO2e · Scope 2: 1 800 tCO2e · Index F/H: 72/100 · Formation: 28h/sal · ISO 9001: jan.2026 · Kbis vérifié · CA: 320M€</div></div></div><div class="flex gap8 mt12"><button class="btn btn-green btn-sm" onclick="toast('Données importées et sauvegardées','var(--green)')">✓ Valider l'import</button><button class="btn btn-ghost btn-sm" onclick="toast('Champs disponibles pour révision')">Réviser manuellement</button></div>`;
 }
 
-function renderDomainTab(domainId) {
-  const el=$('sup-'+domainId+'-fields'); if(!el)return;
-  const fields=DOMAIN_FIELDS[domainId]||[];
-  if(!fields.length){el.innerHTML=`<div class="alert-banner alert-info"><div class="fw7 fs13 c-blue">Module ${domainId.toUpperCase()} — Données à saisir</div></div>`;return;}
-  el.innerHTML=fields.map(f=>{const val=SUP_DATA[f.k]||'';const filled=!!val&&val!=='Non calculé'&&val!=='ABSENT';return`<div class="card mb12"><div class="fld mb0"><label>${f.l.toUpperCase()}${f.req?'<span class="fld-req">*</span>':''}</label><div class="flex gap8 mt4"><input class="inp" id="sup-${f.k}" value="${val||''}" placeholder="Saisir ou laisser vide..." onchange="updateSupData('${f.k}',this.value)" style="flex:1"><span class="sig ${filled?'s-g':'s-r'}" style="font-size:10px;flex-shrink:0">${filled?'✓ Rempli':'À compléter'}</span></div></div></div>`;}).join('')+`<div class="flex gap8 mt16"><button class="btn btn-green" onclick="saveDomainTab('${domainId}')">✓ Sauvegarder ce domaine</button></div>`;
-}
 function updateSupData(k,v){SUP_DATA[k]=v;saveSup();}
 function saveDomainTab(d){saveSup();toast('Domaine '+d.toUpperCase()+' sauvegardé','var(--green)');}
 
@@ -3328,11 +3294,6 @@ function renderSupLogTab() {
   el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><div style="display:grid;grid-template-columns:140px 1fr 1fr 140px;padding:10px 16px;border-bottom:1.5px solid var(--bd);background:var(--cream)"><div class="fs10 fw8 c-muted" style="letter-spacing:.1em">DATE</div><div class="fs10 fw8 c-muted" style="letter-spacing:.1em">ACHETEUR</div><div class="fs10 fw8 c-muted" style="letter-spacing:.1em">ACTION</div><div class="fs10 fw8 c-muted" style="letter-spacing:.1em">DOMAINES</div></div>${AUDIT_LOG.slice(0,8).map(e=>`<div style="display:grid;grid-template-columns:140px 1fr 1fr 140px;padding:10px 16px;border-bottom:1px solid var(--bd2);align-items:center"><div class="mono fs11 c-muted">${e.date.split(' ')[0]}</div><div class="fw6 fs12 c-navy">${e.user}</div><div class="fs12 c-steel">${e.action}</div><div class="flex gap4 flex-wrap">${e.domains.slice(0,2).map(d=>`<span class="sig s-ghost" style="font-size:9px">${d}</span>`).join('')}</div></div>`).join('')}</div>`;
 }
 
-function renderSupDemandsTab() {
-  const el=$('sup-demands-content'); if(!el)return;
-  const demands=[{from:'Pierre Leblanc — Renault',date:'24 mar 2026',subject:'Mise à jour PFAS — Domaine 5',urgent:true},{from:'Sophie Martin — Safran',date:'22 mar 2026',subject:'Déclaration rang 2 Bangladesh',urgent:true},{from:'Jean Dupont — PSA',date:'18 mar 2026',subject:'Certificat ISO 14001 2026',urgent:false}];
-  el.innerHTML=demands.map(d=>`<div class="card mb12" style="border-left:3px solid ${d.urgent?'var(--red)':'var(--amber)'}"><div class="flexb mb6"><div class="fw7 fs13 c-navy">${d.subject}</div>${d.urgent?'<span class="sig s-r" style="font-size:9.5px">Urgent</span>':''}</div><div class="fs12 c-steel mb6">De : ${d.from}</div><div class="mono fs11 c-muted mb10">${d.date}</div><div class="flex gap8"><button class="btn btn-green btn-sm" onclick="toast('Réponse envoyée','var(--green)')">Répondre →</button><button class="btn btn-ghost btn-sm" onclick="ccoTab('d5')">Compléter les données</button></div></div>`).join('');
-}
 
 // ============================================================
 // COLLABORATEUR INTERFACE
@@ -10525,7 +10486,7 @@ autoFillFromSiren = async function(siren, supKey, progressEl) {
   let proposed = 0;
   const batchId = 'batch_siren_' + Date.now();
 
-  function updateProgress(i, label) {
+  function updateAutoProgress(i, label) {
     if (!progressEl) return;
     progressEl.innerHTML = `
     <div style="background:var(--navy);border-radius:var(--r3);padding:14px 16px;margin-bottom:12px">
@@ -11529,7 +11490,7 @@ function handleNotifAction(id) {
   const n = NOTIFICATIONS_CENTER.items.find(x=>x.id===id);
   if (!n) return;
   n.read = true;
-  if (n.action?.fn) { $('notif-panel')?.remove(); eval(n.action.fn); }
+  if (n.action?.fn) { $('notif-panel')?.remove(); try{eval(n.action.fn);}catch(e){cosWarn('[COS] eval err:',e);} }
   else if (n.action?.tab) { $('notif-panel')?.remove(); ccoTab(n.action.tab); }
   updateNotifBadge();
 }
@@ -13581,40 +13542,6 @@ function rejectWFStep(wfId, btn) {
 }
 
 // ── 2I. WORKFLOW BUILDER (éditeur de flux) ────────────────────
-function openFlowBuilder(templateId) {
-  const template = VALIDATION_FLOW_TEMPLATES.find(t=>t.id===templateId);
-  if (!template) return;
-  document.body.insertAdjacentHTML('beforeend',`
-  <div class="modal-bg" style="display:flex" onclick="if(event.target===this)this.remove()">
-    <div class="modal-box" style="max-width:680px;max-height:90vh;display:flex;flex-direction:column">
-      <div class="modal-hd">
-        <div><div class="modal-title">${template.icon} Flux : ${template.label}</div><div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">${template.trigger}</div></div>
-        <button class="modal-close" onclick="this.closest('.modal-bg').remove()">×</button>
-      </div>
-      <div class="modal-body" style="flex:1;overflow-y:auto">
-        ${template.etapes.map((e,i)=>`
-        <div style="display:flex;gap:10px;margin-bottom:10px;padding:12px 14px;background:var(--white);border:1px solid var(--bd);border-radius:8px;align-items:flex-start">
-          <div style="width:24px;height:24px;border-radius:50%;background:${e.obligatoire?'var(--navy)':'var(--warm)'};border:2px solid ${e.obligatoire?'transparent':'var(--bd)'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${e.obligatoire?'#fff':'var(--muted)'};flex-shrink:0">${i+1}</div>
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
-              <input value="${e.role}" style="font-size:12.5px;font-weight:700;color:var(--navy);border:none;background:transparent;flex:1" onchange="VALIDATION_FLOW_TEMPLATES.find(t=>t.id==='${templateId}').etapes[${i}].role=this.value">
-              <span class="sig ${e.obligatoire?'s-b':'s-ghost'}" style="font-size:9px">${e.obligatoire?'Obligatoire':'Conditionnel'}</span>
-            </div>
-            <input value="${e.action}" style="font-size:12px;color:var(--steel);border:none;background:transparent;width:100%" onchange="VALIDATION_FLOW_TEMPLATES.find(t=>t.id==='${templateId}').etapes[${i}].action=this.value">
-            ${e.condition?`<div style="font-size:11px;color:var(--amber);margin-top:3px">⚡ Si : <input value="${e.condition}" style="font-size:11px;color:var(--amber);border:none;background:transparent" onchange="VALIDATION_FLOW_TEMPLATES.find(t=>t.id==='${templateId}').etapes[${i}].condition=this.value"></div>`:''}
-          </div>
-          <select style="font-size:11px;padding:4px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--warm);max-width:150px" onchange="VALIDATION_FLOW_TEMPLATES.find(t=>t.id==='${templateId}').etapes[${i}].role=this.value+' ('+USERS_CONFIG.find(u=>u.id===this.value)?.role+')'">
-            ${USERS_CONFIG.filter(u=>u.actif).map(u=>`<option value="${u.id}">${u.nom}</option>`).join('')}
-          </select>
-        </div>`).join('')}
-        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
-          <button class="btn btn-primary" onclick="typeof toast==='function'&&toast('Flux sauvegardé','var(--green)');this.closest('.modal-bg').remove()">✓ Sauvegarder</button>
-          <button class="btn btn-ghost btn-sm" onclick="this.closest('.modal-bg').remove()">Annuler</button>
-        </div>
-      </div>
-    </div>
-  </div>`);
-}
 
 // ── 2J. INJECTER BOUTONS DANS cadeaux + conflits ──────────────
 const _cadeauxRenderer = CCO_RENDERERS && CCO_RENDERERS['cadeaux'];
@@ -16904,32 +16831,124 @@ function authReset() {
 }
 
 function authOnboard() {
-  var nom=(document.getElementById("ob-nom")||{}).value||"";
-  var company=(document.getElementById("ob-company")||{}).value||"";
-  var rEl=document.querySelector('input[name="ob-role"]:checked');
-  var role=rEl?rEl.value:"CCO";
-  var errEl=document.getElementById("ob-err");
-  nom=nom.trim(); company=company.trim();
-  if(!nom||!company){if(errEl){errEl.textContent="Nom et entreprise requis.";errEl.style.display="block";}return;}
-  window.COS_DB.auth.getSession().then(function(r){
-    var s=r&&r.data&&r.data.session;
-    if(!s){cosRoute({role:role,email:""});return;}
-    window.COS_DB.from("companies").insert({name:company,plan:"decouverte",country:"FR"}).select().single()
-      .then(function(cr){
-        var cid=cr.data?cr.data.id:null;
-        window.COS_DB.from("profiles").upsert({id:s.user.id,company_id:cid,email:s.user.email,nom:nom,role:role,onboarded:true},{onConflict:"id"})
-          .then(function(){
-            window._COS_CID = cid;
-            window._COS_UID = s.user.id;
-            window._COS_PROFILE = {nom:nom, role:role, email:s.user.email, company_id:cid};
-            if (typeof cosInitCompany === "function") cosInitCompany(s.user.id, s.user.email);
-            if (role.toLowerCase() === "fournisseur") {
-              if (typeof cosInitSupplier === "function") cosInitSupplier(s.user.id, s.user.email);
+  var nom    = (document.getElementById("ob-nom")    ||{}).value||"";
+  var company= (document.getElementById("ob-company")||{}).value||"";
+  var rEl    = document.querySelector('input[name="ob-role"]:checked');
+  var role   = rEl ? rEl.value : "CCO";
+  var errEl  = document.getElementById("ob-err");
+  nom = nom.trim(); company = company.trim();
+
+  if (!nom) {
+    if (errEl) { errEl.textContent = "Nom requis."; errEl.style.display = "block"; }
+    return;
+  }
+
+  window.COS_DB.auth.getSession().then(function(r) {
+    var s = r && r.data && r.data.session;
+    if (!s) { cosRoute({role:role, email:""}); return; }
+
+    var uid   = s.user.id;
+    var email = s.user.email;
+
+    // ── Étape 1 : vérifier si une invitation existe pour cet email ──────
+    window.COS_DB.from("invitations")
+      .select("*")
+      .eq("email", email.toLowerCase())
+      .eq("accepted", false)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .then(function(invRes) {
+        var invitation = invRes.data && invRes.data[0];
+
+        if (invitation && invitation.company_id) {
+          // ── Utilisateur invité : hérite du company_id du CCO ──────────
+          var cid        = invitation.company_id;
+          var inheritRole= invitation.role || role;
+
+          cosLog("[COS Onboard] Invitation trouvée, company_id:", cid, "role:", inheritRole);
+
+          // Marquer l'invitation comme acceptée
+          window.COS_DB.from("invitations")
+            .update({ accepted: true })
+            .eq("id", invitation.id)
+            .then(function(){})
+            .catch(function(e){cosWarn("[COS] err:",e);});
+
+          // Créer le profil avec le company_id de l'invitant
+          window.COS_DB.from("profiles").upsert(
+            { id:uid, company_id:cid, email:email, nom:nom,
+              role:inheritRole, onboarded:true },
+            { onConflict:"id" }
+          ).then(function() {
+            window._COS_CID     = cid;
+            window._COS_UID     = uid;
+            window._COS_PROFILE = { nom:nom, role:inheritRole, email:email, company_id:cid };
+            if (typeof cosInitCompany === "function") cosInitCompany(uid, email);
+            if (inheritRole.toLowerCase() === "fournisseur") {
+              if (typeof cosInitSupplier === "function") cosInitSupplier(uid, email);
             }
-            cosRoute({role:role,email:s.user.email});
-          })
-          .catch(function(){cosRoute({role:role,email:s.user.email});});
-      }).catch(function(){cosRoute({role:role,email:s.user.email||""});});
+            cosRoute({ role:inheritRole, email:email });
+          }).catch(function() {
+            cosRoute({ role:inheritRole, email:email });
+          });
+
+        } else {
+          // ── Nouvel utilisateur sans invitation : créer son entreprise ──
+          if (!company) {
+            if (errEl) { errEl.textContent = "Nom de l'entreprise requis."; errEl.style.display = "block"; }
+            return;
+          }
+
+          cosLog("[COS Onboard] Nouveau compte, création entreprise:", company);
+
+          window.COS_DB.from("companies")
+            .insert({ name:company, plan:"decouverte", country:"FR" })
+            .select().single()
+            .then(function(cr) {
+              var cid = cr.data ? cr.data.id : null;
+              window.COS_DB.from("profiles").upsert(
+                { id:uid, company_id:cid, email:email, nom:nom,
+                  role:role, onboarded:true },
+                { onConflict:"id" }
+              ).then(function() {
+                window._COS_CID     = cid;
+                window._COS_UID     = uid;
+                window._COS_PROFILE = { nom:nom, role:role, email:email, company_id:cid };
+                if (typeof cosInitCompany === "function") cosInitCompany(uid, email);
+                if (role.toLowerCase() === "fournisseur") {
+                  if (typeof cosInitSupplier === "function") cosInitSupplier(uid, email);
+                }
+                cosRoute({ role:role, email:email });
+              }).catch(function() {
+                cosRoute({ role:role, email:email });
+              });
+            }).catch(function() {
+              cosRoute({ role:role, email:email });
+            });
+        }
+      })
+      .catch(function() {
+        // Si la table invitations n'existe pas encore → créer normalement
+        if (!company) {
+          if (errEl) { errEl.textContent = "Nom de l'entreprise requis."; errEl.style.display = "block"; }
+          return;
+        }
+        window.COS_DB.from("companies")
+          .insert({ name:company, plan:"decouverte", country:"FR" })
+          .select().single()
+          .then(function(cr) {
+            var cid = cr.data ? cr.data.id : null;
+            window.COS_DB.from("profiles").upsert(
+              { id:uid, company_id:cid, email:email, nom:nom, role:role, onboarded:true },
+              { onConflict:"id" }
+            ).then(function() {
+              window._COS_CID = cid;
+              window._COS_PROFILE = { nom:nom, role:role, email:email, company_id:cid };
+              if (typeof cosInitCompany === "function") cosInitCompany(uid, email);
+              cosRoute({ role:role, email:email });
+            }).catch(function() { cosRoute({ role:role, email:email }); });
+          }).catch(function() { cosRoute({ role:role, email:email }); });
+      });
   });
 }
 
@@ -16938,7 +16957,7 @@ function authSignOut() {
     var ov=document.getElementById("cos-ov"); if(ov)ov.style.display="flex"; authReset();
   });
 }
-console.log("[COS] Auth + Messagerie \u2713");
+cosLog("[COS] Auth + Messagerie \u2713");
 
 
 
@@ -16989,14 +17008,14 @@ console.log("[COS] Auth + Messagerie \u2713");
       .then(function(res) {
         if (res.data && res.data.company_id) {
           window._COS_CID = res.data.company_id;
-          console.log("[COS Sync] company_id:", window._COS_CID);
+          cosLog("[COS Sync] company_id:", window._COS_CID);
           showDot("ok", "Connecté ✓");
           // Charger toutes les données depuis Supabase
           cosLoadAllData();
         }
       })
       .catch(function(e) {
-        console.warn("[COS Sync] init:", e.message);
+        cosWarn("[COS Sync] init:", e.message);
       });
   };
 
@@ -17105,7 +17124,7 @@ console.log("[COS] Auth + Messagerie \u2713");
         if (items.length) showDot("ok", items.length + " déclaration" + (items.length>1?"s":"") + " chargée" + (items.length>1?"s":""));
       })
       .catch(function(e) {
-        console.warn("[COS Sync] loadDeclarations:", e.message);
+        cosWarn("[COS Sync] loadDeclarations:", e.message);
       });
   }
 
@@ -17166,7 +17185,7 @@ console.log("[COS] Auth + Messagerie \u2713");
         if (descEl)  descEl.value  = "";
         if (contrEl) contrEl.value = "";
       }).catch(function(e) {
-        console.warn("[COS] submitCadeau:", e.message);
+        cosWarn("[COS] submitCadeau:", e.message);
         // Fallback : comportement original
         _origSubmitCadeau && _origSubmitCadeau();
       });
@@ -17210,7 +17229,7 @@ console.log("[COS] Auth + Messagerie \u2713");
         if (typeEl) typeEl.value = "";
         if (descEl) descEl.value = "";
       }).catch(function(e) {
-        console.warn("[COS] submitConflict:", e.message);
+        cosWarn("[COS] submitConflict:", e.message);
         _origSubmitConflict && _origSubmitConflict();
       });
     } else {
@@ -17257,7 +17276,7 @@ console.log("[COS] Auth + Messagerie \u2713");
         );
         if (descEl) descEl.value = "";
       }).catch(function(e) {
-        console.warn("[COS] submitAlert:", e.message);
+        cosWarn("[COS] submitAlert:", e.message);
         _origSubmitAlert && _origSubmitAlert();
       });
     } else {
@@ -17337,7 +17356,7 @@ console.log("[COS] Auth + Messagerie \u2713");
       }, function(payload) {
         var d = payload.new;
         if (!d) return;
-        console.log("[COS Realtime] Nouvelle déclaration:", d.type);
+        cosLog("[COS Realtime] Nouvelle déclaration:", d.type);
 
         // Afficher notification
         var labels = { cadeau:"cadeau", conflit:"conflit d'intérêts", alerte:"alerte professionnelle" };
@@ -17364,14 +17383,14 @@ console.log("[COS] Auth + Messagerie \u2713");
       })
       .subscribe();
 
-    console.log("[COS Realtime] Abonnement actif ✓");
+    cosLog("[COS Realtime] Abonnement actif ✓");
   }
 
   // Exposer pour usage externe
   window.cosLoadDeclarations = loadDeclarations;
   window.cosStartRealtime    = startRealtime;
 
-  console.log("[COS Sync] Module chargé ✓");
+  cosLog("[COS Sync] Module chargé ✓");
 })();
 
 
@@ -17476,7 +17495,7 @@ function cosDoInvite() {
               saveSup(); // sync localStorage
             } catch(e) {}
           }
-          console.log("[COS Supplier] Passeport chargé:", window._COS_SUP_CPO);
+          cosLog("[COS Supplier] Passeport chargé:", window._COS_SUP_CPO);
           // Mettre à jour l'affichage de l'ID
           cosUpdateSupId(window._COS_SUP_CPO, res.data.raison_sociale || userEmail);
         } else {
@@ -17485,7 +17504,7 @@ function cosDoInvite() {
         }
       })
       .catch(function(e) {
-        console.warn("[COS Supplier] init:", e.message);
+        cosWarn("[COS Supplier] init:", e.message);
         // Générer un ID local en fallback
         var localId = localStorage.getItem("cos_sup_cpo");
         if (!localId) {
@@ -17526,12 +17545,12 @@ function cosDoInvite() {
         if (res.data) {
           window._COS_SUP_ID  = res.data.id;
           window._COS_SUP_CID = res.data.company_id;
-          console.log("[COS Supplier] Nouveau passeport créé:", cpoId);
+          cosLog("[COS Supplier] Nouveau passeport créé:", cpoId);
           cosUpdateSupId(cpoId, userEmail);
         }
       })
       .catch(function(e) {
-        console.warn("[COS Supplier] create:", e.message);
+        cosWarn("[COS Supplier] create:", e.message);
         cosUpdateSupId(cpoId, userEmail);
       });
   }
@@ -17594,12 +17613,12 @@ function cosDoInvite() {
             action:     "supplier_passport_saved",
             table_name: "supplier_profiles",
             data:       { cpo_id: cpoId, completeness: completeness }
-          }).catch(function(){});
+          }).catch(function(e){cosWarn("[COS] err:",e);});
         }
-        console.log("[COS Supplier] Passeport sauvegardé:", cpoId, completeness + "%");
+        cosLog("[COS Supplier] Passeport sauvegardé:", cpoId, completeness + "%");
       })
       .catch(function(e) {
-        console.warn("[COS Supplier] saveSup:", e.message);
+        cosWarn("[COS Supplier] saveSup:", e.message);
       });
   };
 
@@ -17660,7 +17679,7 @@ function cosDoInvite() {
       .then(function(res) {
         if (!res.data || !res.data.length) return;
         var sups = res.data;
-        console.log("[COS CCO] " + sups.length + " fournisseur(s) chargés depuis Supabase");
+        cosLog("[COS CCO] " + sups.length + " fournisseur(s) chargés depuis Supabase");
 
         // Injecter dans PASSPORTS et DDAC_TIERS
         sups.forEach(function(s) {
@@ -17725,7 +17744,7 @@ function cosDoInvite() {
         }
       })
       .catch(function(e) {
-        console.warn("[COS CCO] loadSuppliers:", e.message);
+        cosWarn("[COS CCO] loadSuppliers:", e.message);
       });
   };
 
@@ -17748,7 +17767,7 @@ function cosDoInvite() {
           "var(--green)"
         );
         // Ouvrir le passeport en lecture
-        console.log("[COS] Passeport trouvé:", s);
+        cosLog("[COS] Passeport trouvé:", s);
       })
       .catch(function(e) {
         typeof toast === "function" && toast("Erreur recherche: " + e.message, "var(--red)");
@@ -17769,12 +17788,51 @@ function cosDoInvite() {
     }
   }, 1000);
 
-  console.log("[COS Supplier Sync] Module chargé ✓");
+  cosLog("[COS Supplier Sync] Module chargé ✓");
 })();
 
-</script>
-</body>
-</htmlfunction handleDocFile(files){
+
+
+// Vérifier invitation dès le chargement de l'onboarding
+function cosCheckInviteForOnboard(email) {
+  if (!window.COS_DB || !email) return;
+  window.COS_DB.from("invitations")
+    .select("*")
+    .eq("email", email.toLowerCase())
+    .eq("accepted", false)
+    .limit(1)
+    .then(function(res) {
+      var inv = res.data && res.data[0];
+      if (inv) {
+        // Invitation trouvée : masquer champ entreprise, pré-remplir rôle
+        var companyBlock = document.getElementById("ob-company");
+        var companyLabel = companyBlock ? companyBlock.previousElementSibling : null;
+        if (companyBlock) {
+          companyBlock.parentElement.style.display = "none";
+          if (companyLabel) companyLabel.style.display = "none";
+        }
+
+        // Pré-sélectionner le rôle de l'invitation
+        if (inv.role) {
+          var roleInput = document.querySelector('input[name="ob-role"][value="'+inv.role+'"]');
+          if (roleInput) roleInput.checked = true;
+        }
+
+        // Afficher message
+        var obErr = document.getElementById("ob-err");
+        if (obErr) {
+          obErr.style.display = "block";
+          obErr.style.color = "var(--green, #22c55e)";
+          obErr.textContent = "\u2713 Invitation accept\u00e9e — vous rejoignez l'espace de votre entreprise.";
+        }
+      }
+    })
+    .catch(function(e){cosWarn("[COS] err:",e);});
+}
+
+
+
+function handleDocFile(files){
   var file=files&&files[0];if(!file)return;
   if(file.size>10485760){toast('Fichier trop lourd (max 10 MB)','var(--amber)');return;}
   var el=$('sup-import-result');
@@ -17820,4 +17878,8 @@ function cosDoInvite() {
   reader.onerror=function(){toast('Erreur lecture','var(--red)');};
   if(isPdf)reader.readAsDataURL(file);else reader.readAsText(file);
 }
->
+
+</script>
+</body>
+
+</html>
