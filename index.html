@@ -2192,13 +2192,6 @@ if (window._COS_TOKEN) {
 
 
 <script>
-function cosEscape(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-
-// Production logger
-window._COS_DEBUG = false;
-function cosLog() { if (window._COS_DEBUG) console.log.apply(console, arguments); }
-function cosWarn() { if (window._COS_DEBUG) console.warn.apply(console, arguments); }
-
 
 // ============================================================
 // CORE UTILITIES
@@ -3176,24 +3169,19 @@ CCO_RENDERERS['politiques'] = function renderPolitiques() {
     par.insertBefore(f, el);
   }
 
-  el.innerHTML=docs.map(function(d){
-    var sc=d.status==='ok'?'s-g':d.status==='partial'?'s-a':'s-r';
-    var sl=d.status==='ok'?'\u2713 \u00c0 jour':d.status==='partial'?'Partiel':'\u00c0 cr\u00e9er';
-    var sn=(d.n||'').replace(/'/g,'\\\'');
-    return '<div class="card card-hover" style="display:flex;flex-direction:column;min-height:180px">'
-      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
-      +'<div style="font-size:24px;line-height:1">'+d.icon+'</div>'
-      +'<span class="sig '+sc+'" style="font-size:9.5px">'+sl+'</span>'
-      +'</div>'
-      +'<div class="fw7 fs13 c-navy mb6" style="line-height:1.35">'+d.n+'</div>'
-      +'<div class="fs12 c-steel mb10" style="line-height:1.6;flex:1">'+d.desc+'</div>'
-      +'<div style="display:flex;align-items:center;gap:6px;padding-top:8px;border-top:1px solid var(--bd2)">'
-      +'<span class="sig s-ghost" style="font-size:9px">'+d.cat+'</span>'
-      +'<span class="mono fs10 c-muted" style="margin-left:auto">'+d.date+'</span>'
-      +'</div>'
-      +'<button class="btn btn-primary btn-sm" style="margin-top:10px;width:100%;justify-content:center;font-size:11px" onclick="openPolicyEditor(\''+sn+'\')">Ouvrir</button>'
-      +'</div>';
-  }).join('');;;
+  el.innerHTML=docs.map(d=>`<div class="card card-hover" style="display:flex;flex-direction:column;cursor:pointer" onclick="openPolicyEditor(d.n)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div style="font-size:26px;line-height:1">${d.icon}</div>
+      <span class="sig ${d.status==='ok'?'s-g':d.status==='partial'?'s-a':'s-r'}" style="font-size:9.5px">${d.status==='ok'?'✓ À jour':d.status==='partial'?'Partiel':'À créer'}</span>
+    </div>
+    <div class="fw7 fs13 c-navy mb4" style="line-height:1.35">${d.n}</div>
+    <div class="fs12 c-steel" style="line-height:1.6;flex:1">${d.desc}</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--bd2)">
+      <span class="sig s-ghost" style="font-size:9px">${d.cat}</span>
+      <span class="mono fs10 c-muted" style="margin-left:auto">${d.date}</span>
+    </div>
+    <button class="btn btn-primary btn-sm" style="margin-top:10px;width:100%;justify-content:center;font-size:11px" onclick="event.stopPropagation();openPolicyEditor(d.n)">📄 Ouvrir le document</button>
+  </div>`).join('');
 };
 
 // ============================================================
@@ -3228,33 +3216,9 @@ function renderSupDash() {
   ua.innerHTML=gaps.map(g=>`<div class="flex gap8 mb8"><div class="rdot ${g.risk==='critical'?'rdot-c':'rdot-h'}" style="flex-shrink:0"></div><div style="flex:1;fs12 c-navy">${g.n}</div><button class="btn btn-ghost btn-sm" style="font-size:10px" onclick="supTab('${g.d}')">Compléter →</button></div>`).join('');
 }
 
-function renderSupImport(){
-  var el=$('sup-import-content');if(!el)return;
-  el.innerHTML='<div class="card mb16"><div class="fw7 fs14 c-navy mb4">Ingestion IA \u2014 Remplissage automatique</div><div class="fs12 c-steel mb16" style="line-height:1.75">D\u00e9posez vos documents \u2014 Claude extrait les champs automatiquement.</div><div style="border:2px dashed var(--pale);border-radius:var(--r2);padding:40px;text-align:center;background:var(--cream);margin-bottom:16px;cursor:pointer" ondragover="event.preventDefault();this.style.background=\'var(--blu-l)\'" ondragleave="this.style.background=\'var(--cream)\'" ondrop="event.preventDefault();this.style.background=\'var(--cream)\';handleDocDrop(event.dataTransfer.files)" onclick="document.getElementById(\'sup-file-input\').click()"><div style="font-size:32px;margin-bottom:10px">\uD83D\uDCC4</div><div class="fw7 fs14 c-navy mb4">Cliquer ou glisser un document</div><div class="fs12 c-muted mb4">PDF \u00b7 Word \u00b7 TXT \u00b7 10 MB max</div></div><input type="file" id="sup-file-input" accept=".pdf,.doc,.docx,.txt,.csv" style="display:none" onchange="handleDocFile(this.files)"><div id="sup-import-result"></div></div>';
-}
-function handleDocDrop(f){if(f&&f[0])handleDocFile([f[0]]);}
-function extractFromText(text,filename){
-  callClaude('Tu es expert compliance. Retourne UNIQUEMENT un JSON valide avec les cles: siren,raison_sociale,capital,forme,effectif,ca,resultat,scope1,scope2,scope3,energie,renouv,index_fh,tx_at,absenteisme,formation_h,reach,pfas,rohs,code_conduite,alerte,carto_risques,formation_ac,iso9001,iso14001,ecovadis,be,pep,sanctions,lcbft. JSON UNIQUEMENT.','Fichier: '+filename+'\n\n'+text,1000)
-    .then(function(r){processExtractedData(r,filename);})
-    .catch(function(e){var el=$('sup-import-result');if(el)el.innerHTML='<div class="alert-banner alert-warn">Claude indisponible: '+e.message+'</div>';});
-}
-function extractFromPdf(b64,filename){
-  fetch('/.netlify/functions/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:'Extrait les donnees compliance du PDF. JSON UNIQUEMENT: siren,raison_sociale,capital,forme,effectif,ca,resultat,scope1,scope2,scope3,index_fh,tx_at,formation_h,reach,pfas,rohs,code_conduite,alerte,formation_ac,iso9001,iso14001,ecovadis,be,pep,sanctions.',messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:'JSON uniquement.'}]}],maxTokens:1000})})
-  .then(function(r){return r.json();}).then(function(d){if(d.error)throw new Error(d.error);processExtractedData(d.text||'',filename);})
-  .catch(function(){var el=$('sup-import-result');if(el)el.innerHTML='<div class="alert-banner alert-warn">PDF complexe. Essayez un .txt</div>';});
-}
-function processExtractedData(raw,filename){
-  var el=$('sup-import-result'),extracted={};
-  try{var c=raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();extracted=JSON.parse(c);}
-  catch(e){var m=raw.match(/\{[\s\S]*\}/);if(m)try{extracted=JSON.parse(m[0]);}catch(e2){}}
-  var filled=0;
-  Object.keys(extracted).forEach(function(k){var v=extracted[k];if(v&&v!=='null'&&v!==''){SUP_DATA[k]=String(v);filled++;}});
-  if(filled>0){saveSup();if(typeof refreshCurrentDomainTab==='function')refreshCurrentDomainTab();}
-  if(!el)return;
-  if(filled===0){el.innerHTML='<div class="alert-banner alert-warn">Aucun champ extrait. Essayez un autre format.</div>';return;}
-  var rows=Object.keys(extracted).filter(function(k){return extracted[k]&&extracted[k]!=='null';}).map(function(k){return'<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--bd2)"><span style="font-size:11px;font-weight:600;color:var(--navy);min-width:110px">'+k+'</span><span style="font-size:12px;color:var(--steel)">'+String(extracted[k]).substring(0,50)+'</span></div>';}).join('');
-  el.innerHTML='<div class="alert-banner alert-ok" style="flex-direction:column;align-items:flex-start"><div class="flex gap8 mb10"><div style="font-size:18px">\u2713</div><div class="fw7 fs13 c-green">'+filled+' champs extraits \u2014 '+filename+'</div></div><div style="max-height:180px;overflow-y:auto;width:100%">'+rows+'</div><div class="flex gap8 mt10"><button class="btn btn-green btn-sm" onclick="typeof refreshCurrentDomainTab===\'function\'&&refreshCurrentDomainTab();toast(\'Champs mis a jour\',\'var(--green)\')">Voir dans le passeport</button></div></div>';
-  toast('\u2713 '+filled+' champs extraits','var(--green)');
+function renderSupImport() {
+  const el=$('sup-import-content'); if(!el)return;
+  el.innerHTML=`<div class="card mb16"><div class="fw7 fs14 c-navy mb4">Ingestion IA — Remplissage automatique</div><div class="fs12 c-steel mb16" style="line-height:1.75">Déposez vos documents (CSRD, bilan social, Kbis, certifications, rapport AFA, bilan carbone) — Claude extrait les champs du Passeport automatiquement.</div><div style="border:2px dashed var(--pale);border-radius:var(--r2);padding:40px;text-align:center;background:var(--cream);margin-bottom:16px"><div style="font-size:32px;margin-bottom:10px">📄</div><div class="fw7 fs14 c-navy mb4">Déposer un document</div><div class="fs12 c-muted mb12">PDF, Word, Excel · 50 MB max</div><button class="btn btn-primary" onclick="simulateImport()">Simuler l'ingestion IA</button></div><div id="sup-import-result"></div></div>`;
 }
 
 async function simulateImport() {
@@ -3264,6 +3228,12 @@ async function simulateImport() {
   el.innerHTML=`<div class="alert-banner alert-ok"><div style="font-size:18px">✓</div><div><div class="fw7 fs13 c-green mb4">12 champs extraits automatiquement</div><div class="fs12 c-steel">Scope 1: 4 200 tCO2e · Scope 2: 1 800 tCO2e · Index F/H: 72/100 · Formation: 28h/sal · ISO 9001: jan.2026 · Kbis vérifié · CA: 320M€</div></div></div><div class="flex gap8 mt12"><button class="btn btn-green btn-sm" onclick="toast('Données importées et sauvegardées','var(--green)')">✓ Valider l'import</button><button class="btn btn-ghost btn-sm" onclick="toast('Champs disponibles pour révision')">Réviser manuellement</button></div>`;
 }
 
+function renderDomainTab(domainId) {
+  const el=$('sup-'+domainId+'-fields'); if(!el)return;
+  const fields=DOMAIN_FIELDS[domainId]||[];
+  if(!fields.length){el.innerHTML=`<div class="alert-banner alert-info"><div class="fw7 fs13 c-blue">Module ${domainId.toUpperCase()} — Données à saisir</div></div>`;return;}
+  el.innerHTML=fields.map(f=>{const val=SUP_DATA[f.k]||'';const filled=!!val&&val!=='Non calculé'&&val!=='ABSENT';return`<div class="card mb12"><div class="fld mb0"><label>${f.l.toUpperCase()}${f.req?'<span class="fld-req">*</span>':''}</label><div class="flex gap8 mt4"><input class="inp" id="sup-${f.k}" value="${val||''}" placeholder="Saisir ou laisser vide..." onchange="updateSupData('${f.k}',this.value)" style="flex:1"><span class="sig ${filled?'s-g':'s-r'}" style="font-size:10px;flex-shrink:0">${filled?'✓ Rempli':'À compléter'}</span></div></div></div>`;}).join('')+`<div class="flex gap8 mt16"><button class="btn btn-green" onclick="saveDomainTab('${domainId}')">✓ Sauvegarder ce domaine</button></div>`;
+}
 function updateSupData(k,v){SUP_DATA[k]=v;saveSup();}
 function saveDomainTab(d){saveSup();toast('Domaine '+d.toUpperCase()+' sauvegardé','var(--green)');}
 
@@ -3294,6 +3264,11 @@ function renderSupLogTab() {
   el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><div style="display:grid;grid-template-columns:140px 1fr 1fr 140px;padding:10px 16px;border-bottom:1.5px solid var(--bd);background:var(--cream)"><div class="fs10 fw8 c-muted" style="letter-spacing:.1em">DATE</div><div class="fs10 fw8 c-muted" style="letter-spacing:.1em">ACHETEUR</div><div class="fs10 fw8 c-muted" style="letter-spacing:.1em">ACTION</div><div class="fs10 fw8 c-muted" style="letter-spacing:.1em">DOMAINES</div></div>${AUDIT_LOG.slice(0,8).map(e=>`<div style="display:grid;grid-template-columns:140px 1fr 1fr 140px;padding:10px 16px;border-bottom:1px solid var(--bd2);align-items:center"><div class="mono fs11 c-muted">${e.date.split(' ')[0]}</div><div class="fw6 fs12 c-navy">${e.user}</div><div class="fs12 c-steel">${e.action}</div><div class="flex gap4 flex-wrap">${e.domains.slice(0,2).map(d=>`<span class="sig s-ghost" style="font-size:9px">${d}</span>`).join('')}</div></div>`).join('')}</div>`;
 }
 
+function renderSupDemandsTab() {
+  const el=$('sup-demands-content'); if(!el)return;
+  const demands=[{from:'Pierre Leblanc — Renault',date:'24 mar 2026',subject:'Mise à jour PFAS — Domaine 5',urgent:true},{from:'Sophie Martin — Safran',date:'22 mar 2026',subject:'Déclaration rang 2 Bangladesh',urgent:true},{from:'Jean Dupont — PSA',date:'18 mar 2026',subject:'Certificat ISO 14001 2026',urgent:false}];
+  el.innerHTML=demands.map(d=>`<div class="card mb12" style="border-left:3px solid ${d.urgent?'var(--red)':'var(--amber)'}"><div class="flexb mb6"><div class="fw7 fs13 c-navy">${d.subject}</div>${d.urgent?'<span class="sig s-r" style="font-size:9.5px">Urgent</span>':''}</div><div class="fs12 c-steel mb6">De : ${d.from}</div><div class="mono fs11 c-muted mb10">${d.date}</div><div class="flex gap8"><button class="btn btn-green btn-sm" onclick="toast('Réponse envoyée','var(--green)')">Répondre →</button><button class="btn btn-ghost btn-sm" onclick="ccoTab('d5')">Compléter les données</button></div></div>`).join('');
+}
 
 // ============================================================
 // COLLABORATEUR INTERFACE
@@ -3320,55 +3295,31 @@ function signCodeConduite() {
   toast('✓ Code de Conduite signé — Archivé sécurisé','var(--green)');
 }
 
-function submitCadeau(){
-  var typeEl=$('cad-type'),valEl=$('cad-val'),descEl=$('cad-desc'),contEl=$('cad-contrepartie')||$('cad-cont');
-  var type=typeEl?typeEl.value.trim():'',valeur=valEl?parseFloat(valEl.value)||0:0;
-  var desc=descEl?descEl.value.trim():'',contr=contEl?contEl.value.trim():'';
-  if(!type||!valeur||!desc){toast('Complétez les champs obligatoires','var(--amber)');return;}
-  var risk=valeur>150?'high':valeur>80?'medium':'low';
-  if(typeEl)typeEl.value='';if(valEl)valEl.value='';if(descEl)descEl.value='';if(contEl)contEl.value='';
-  if(window.COS_DB&&window._COS_CID){
-    window.COS_DB.auth.getSession().then(function(r){
-      var s=r&&r.data&&r.data.session;
-      var nom=window._COS_PROFILE?(window._COS_PROFILE.nom||''):(s?s.user.email:'Collaborateur');
-      var bu=window._COS_PROFILE?(window._COS_PROFILE.bu||''):'';
-      return window.COS_DB.from('declarations').insert({company_id:window._COS_CID,type:'cadeau',subtype:type,declarant_name:nom,declarant_email:s?s.user.email:null,declarant_bu:bu,risk:risk,status:valeur>150?'pending':'auto_approved',data:{type:type,valeur:valeur,desc:desc,contrepartie:contr}});
-    }).then(function(){toast('Déclaration envoyée — '+(valeur>150?'⚠ Transmis CCO':'✓ Conforme'),valeur>150?'var(--amber)':'var(--green)');})
-      .catch(function(e){toast('Déclaration enregistrée','var(--green)');console.warn(e);});
-  }else{toast('Déclaration enregistrée — '+(valeur>150?'⚠ Au-dessus du seuil':'✓ Conforme'),valeur>150?'var(--amber)':'var(--green)');}
+function submitCadeau() {
+  const type=$('cad-type')?.value, val=$('cad-val')?.value, desc=$('cad-desc')?.value;
+  if(!type||!val||!desc){toast('Complétez les champs obligatoires','var(--amber)');return;}
+  toast(`Déclaration enregistrée — ${parseFloat(val)>150?'⚠ Au-dessus du seuil 150€ — transmis CCO':'✓ Conforme'}`);
+  if($('cad-type'))$('cad-type').value=''; if($('cad-val'))$('cad-val').value=''; if($('cad-desc'))$('cad-desc').value='';
 }
 
-function submitConflict(){
-  var typeEl=$('cfl-type'),descEl=$('cfl-desc');
-  var type=typeEl?typeEl.value.trim():'',desc=descEl?descEl.value.trim():'';
+function submitConflict() {
+  const type=$('cfl-type')?.value, desc=$('cfl-desc')?.value;
   if(!type||!desc){toast('Complétez la nature et la description','var(--amber)');return;}
-  if(typeEl)typeEl.value='';if(descEl)descEl.value='';
-  if(window.COS_DB&&window._COS_CID){
-    window.COS_DB.auth.getSession().then(function(r){
-      var s=r&&r.data&&r.data.session;
-      var nom=window._COS_PROFILE?(window._COS_PROFILE.nom||''):(s?s.user.email:'Collaborateur');
-      return window.COS_DB.from('declarations').insert({company_id:window._COS_CID,type:'conflit',subtype:type,declarant_name:nom,declarant_email:s?s.user.email:null,risk:'medium',status:'active',data:{type:type,desc:desc}});
-    }).then(function(){toast('Déclaration de conflit enregistrée — CCO notifié','var(--green)');})
-      .catch(function(e){toast('Déclaration enregistrée','var(--green)');});
-  }else{toast('Déclaration de conflit enregistrée','var(--green)');}
+  toast('Déclaration de conflit enregistrée — CCO notifié','var(--green)');
+  if($('cfl-type'))$('cfl-type').value=''; if($('cfl-desc'))$('cfl-desc').value='';
 }
 
-function submitAlert(){
-  var descEl=$('alr-desc'),anonEl=$('alr-anon'),catEl=$('alr-cat')||$('alr-category');
-  var desc=descEl?descEl.value.trim():'',anon=anonEl?anonEl.checked:false,cat=catEl?catEl.value:'Signalement';
-  var ref='ALR-'+Date.now().toString(36).toUpperCase().slice(0,6);
+function submitAlert() {
+  const desc=$('alr-desc')?.value;
   if(!desc){toast('Décrivez la situation observée','var(--amber)');return;}
-  if(descEl)descEl.value='';
-  if(window.COS_DB&&window._COS_CID){
-    window.COS_DB.auth.getSession().then(function(r){
-      var s=r&&r.data&&r.data.session;
-      var nom=anon?null:(window._COS_PROFILE?(window._COS_PROFILE.nom||''):(s?s.user.email:null));
-      return window.COS_DB.from('declarations').insert({company_id:window._COS_CID,type:'alerte',subtype:cat,declarant_name:nom,declarant_email:anon?null:(s?s.user.email:null),risk:'high',status:'active',data:{desc:desc,category:cat,anon:anon,ref:ref}});
-    }).then(function(){toast('Signalement enregistré'+(anon?' (anonyme)':'')+' — Réf : '+ref,'var(--green)');})
-      .catch(function(e){toast('Signalement enregistré — Réf : '+ref,'var(--green)');});
-  }else{toast('Signalement enregistré'+(anon?' (anonyme)':'')+' — Réf : '+ref,'var(--green)');}
+  const anon=$('alr-anon')?.checked;
+  toast(`Signalement enregistré${anon?' (anonyme)':''} — Réf: ALR-${Date.now().toString(36).toUpperCase().slice(0,6)}`,'var(--green)');
+  if($('alr-desc'))$('alr-desc').value='';
 }
 
+// ============================================================
+// ONBOARDING — send invite
+// ============================================================
 function sendInvite() {
   const name=$('inv-name')?.value;
   if(!name){toast('Saisissez le nom de l\'entreprise','var(--amber)');return;}
@@ -3611,7 +3562,7 @@ async function sendCopilote() {
 
   try {
     const histMsgs=chatHistory.slice(-8).map(m=>({role:m.role,content:m.content}));
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:sysPrompt,messages:histMsgs})});
+    const resp=await fetch('/.netlify/functions/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:sysPrompt,messages:histMsgs})});
     const data=await resp.json();
     const answer=data.content?.map(c=>c.text||'').join('')||'';
     chatHistory.push({role:'assistant',content:answer});
@@ -10486,7 +10437,7 @@ autoFillFromSiren = async function(siren, supKey, progressEl) {
   let proposed = 0;
   const batchId = 'batch_siren_' + Date.now();
 
-  function updateAutoProgress(i, label) {
+  function updateProgress(i, label) {
     if (!progressEl) return;
     progressEl.innerHTML = `
     <div style="background:var(--navy);border-radius:var(--r3);padding:14px 16px;margin-bottom:12px">
@@ -11490,7 +11441,7 @@ function handleNotifAction(id) {
   const n = NOTIFICATIONS_CENTER.items.find(x=>x.id===id);
   if (!n) return;
   n.read = true;
-  if (n.action?.fn) { $('notif-panel')?.remove(); try{eval(n.action.fn);}catch(e){cosWarn('[COS] eval err:',e);} }
+  if (n.action?.fn) { $('notif-panel')?.remove(); eval(n.action.fn); }
   else if (n.action?.tab) { $('notif-panel')?.remove(); ccoTab(n.action.tab); }
   updateNotifBadge();
 }
@@ -13542,6 +13493,40 @@ function rejectWFStep(wfId, btn) {
 }
 
 // ── 2I. WORKFLOW BUILDER (éditeur de flux) ────────────────────
+function openFlowBuilder(templateId) {
+  const template = VALIDATION_FLOW_TEMPLATES.find(t=>t.id===templateId);
+  if (!template) return;
+  document.body.insertAdjacentHTML('beforeend',`
+  <div class="modal-bg" style="display:flex" onclick="if(event.target===this)this.remove()">
+    <div class="modal-box" style="max-width:680px;max-height:90vh;display:flex;flex-direction:column">
+      <div class="modal-hd">
+        <div><div class="modal-title">${template.icon} Flux : ${template.label}</div><div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">${template.trigger}</div></div>
+        <button class="modal-close" onclick="this.closest('.modal-bg').remove()">×</button>
+      </div>
+      <div class="modal-body" style="flex:1;overflow-y:auto">
+        ${template.etapes.map((e,i)=>`
+        <div style="display:flex;gap:10px;margin-bottom:10px;padding:12px 14px;background:var(--white);border:1px solid var(--bd);border-radius:8px;align-items:flex-start">
+          <div style="width:24px;height:24px;border-radius:50%;background:${e.obligatoire?'var(--navy)':'var(--warm)'};border:2px solid ${e.obligatoire?'transparent':'var(--bd)'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${e.obligatoire?'#fff':'var(--muted)'};flex-shrink:0">${i+1}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+              <input value="${e.role}" style="font-size:12.5px;font-weight:700;color:var(--navy);border:none;background:transparent;flex:1" onchange="VALIDATION_FLOW_TEMPLATES.find(t=>t.id==='${templateId}').etapes[${i}].role=this.value">
+              <span class="sig ${e.obligatoire?'s-b':'s-ghost'}" style="font-size:9px">${e.obligatoire?'Obligatoire':'Conditionnel'}</span>
+            </div>
+            <input value="${e.action}" style="font-size:12px;color:var(--steel);border:none;background:transparent;width:100%" onchange="VALIDATION_FLOW_TEMPLATES.find(t=>t.id==='${templateId}').etapes[${i}].action=this.value">
+            ${e.condition?`<div style="font-size:11px;color:var(--amber);margin-top:3px">⚡ Si : <input value="${e.condition}" style="font-size:11px;color:var(--amber);border:none;background:transparent" onchange="VALIDATION_FLOW_TEMPLATES.find(t=>t.id==='${templateId}').etapes[${i}].condition=this.value"></div>`:''}
+          </div>
+          <select style="font-size:11px;padding:4px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--warm);max-width:150px" onchange="VALIDATION_FLOW_TEMPLATES.find(t=>t.id==='${templateId}').etapes[${i}].role=this.value+' ('+USERS_CONFIG.find(u=>u.id===this.value)?.role+')'">
+            ${USERS_CONFIG.filter(u=>u.actif).map(u=>`<option value="${u.id}">${u.nom}</option>`).join('')}
+          </select>
+        </div>`).join('')}
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+          <button class="btn btn-primary" onclick="typeof toast==='function'&&toast('Flux sauvegardé','var(--green)');this.closest('.modal-bg').remove()">✓ Sauvegarder</button>
+          <button class="btn btn-ghost btn-sm" onclick="this.closest('.modal-bg').remove()">Annuler</button>
+        </div>
+      </div>
+    </div>
+  </div>`);
+}
 
 // ── 2J. INJECTER BOUTONS DANS cadeaux + conflits ──────────────
 const _cadeauxRenderer = CCO_RENDERERS && CCO_RENDERERS['cadeaux'];
@@ -16831,124 +16816,32 @@ function authReset() {
 }
 
 function authOnboard() {
-  var nom    = (document.getElementById("ob-nom")    ||{}).value||"";
-  var company= (document.getElementById("ob-company")||{}).value||"";
-  var rEl    = document.querySelector('input[name="ob-role"]:checked');
-  var role   = rEl ? rEl.value : "CCO";
-  var errEl  = document.getElementById("ob-err");
-  nom = nom.trim(); company = company.trim();
-
-  if (!nom) {
-    if (errEl) { errEl.textContent = "Nom requis."; errEl.style.display = "block"; }
-    return;
-  }
-
-  window.COS_DB.auth.getSession().then(function(r) {
-    var s = r && r.data && r.data.session;
-    if (!s) { cosRoute({role:role, email:""}); return; }
-
-    var uid   = s.user.id;
-    var email = s.user.email;
-
-    // ── Étape 1 : vérifier si une invitation existe pour cet email ──────
-    window.COS_DB.from("invitations")
-      .select("*")
-      .eq("email", email.toLowerCase())
-      .eq("accepted", false)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .then(function(invRes) {
-        var invitation = invRes.data && invRes.data[0];
-
-        if (invitation && invitation.company_id) {
-          // ── Utilisateur invité : hérite du company_id du CCO ──────────
-          var cid        = invitation.company_id;
-          var inheritRole= invitation.role || role;
-
-          cosLog("[COS Onboard] Invitation trouvée, company_id:", cid, "role:", inheritRole);
-
-          // Marquer l'invitation comme acceptée
-          window.COS_DB.from("invitations")
-            .update({ accepted: true })
-            .eq("id", invitation.id)
-            .then(function(){})
-            .catch(function(e){cosWarn("[COS] err:",e);});
-
-          // Créer le profil avec le company_id de l'invitant
-          window.COS_DB.from("profiles").upsert(
-            { id:uid, company_id:cid, email:email, nom:nom,
-              role:inheritRole, onboarded:true },
-            { onConflict:"id" }
-          ).then(function() {
-            window._COS_CID     = cid;
-            window._COS_UID     = uid;
-            window._COS_PROFILE = { nom:nom, role:inheritRole, email:email, company_id:cid };
-            if (typeof cosInitCompany === "function") cosInitCompany(uid, email);
-            if (inheritRole.toLowerCase() === "fournisseur") {
-              if (typeof cosInitSupplier === "function") cosInitSupplier(uid, email);
+  var nom=(document.getElementById("ob-nom")||{}).value||"";
+  var company=(document.getElementById("ob-company")||{}).value||"";
+  var rEl=document.querySelector('input[name="ob-role"]:checked');
+  var role=rEl?rEl.value:"CCO";
+  var errEl=document.getElementById("ob-err");
+  nom=nom.trim(); company=company.trim();
+  if(!nom||!company){if(errEl){errEl.textContent="Nom et entreprise requis.";errEl.style.display="block";}return;}
+  window.COS_DB.auth.getSession().then(function(r){
+    var s=r&&r.data&&r.data.session;
+    if(!s){cosRoute({role:role,email:""});return;}
+    window.COS_DB.from("companies").insert({name:company,plan:"decouverte",country:"FR"}).select().single()
+      .then(function(cr){
+        var cid=cr.data?cr.data.id:null;
+        window.COS_DB.from("profiles").upsert({id:s.user.id,company_id:cid,email:s.user.email,nom:nom,role:role,onboarded:true},{onConflict:"id"})
+          .then(function(){
+            window._COS_CID = cid;
+            window._COS_UID = s.user.id;
+            window._COS_PROFILE = {nom:nom, role:role, email:s.user.email, company_id:cid};
+            if (typeof cosInitCompany === "function") cosInitCompany(s.user.id, s.user.email);
+            if (role.toLowerCase() === "fournisseur") {
+              if (typeof cosInitSupplier === "function") cosInitSupplier(s.user.id, s.user.email);
             }
-            cosRoute({ role:inheritRole, email:email });
-          }).catch(function() {
-            cosRoute({ role:inheritRole, email:email });
-          });
-
-        } else {
-          // ── Nouvel utilisateur sans invitation : créer son entreprise ──
-          if (!company) {
-            if (errEl) { errEl.textContent = "Nom de l'entreprise requis."; errEl.style.display = "block"; }
-            return;
-          }
-
-          cosLog("[COS Onboard] Nouveau compte, création entreprise:", company);
-
-          window.COS_DB.from("companies")
-            .insert({ name:company, plan:"decouverte", country:"FR" })
-            .select().single()
-            .then(function(cr) {
-              var cid = cr.data ? cr.data.id : null;
-              window.COS_DB.from("profiles").upsert(
-                { id:uid, company_id:cid, email:email, nom:nom,
-                  role:role, onboarded:true },
-                { onConflict:"id" }
-              ).then(function() {
-                window._COS_CID     = cid;
-                window._COS_UID     = uid;
-                window._COS_PROFILE = { nom:nom, role:role, email:email, company_id:cid };
-                if (typeof cosInitCompany === "function") cosInitCompany(uid, email);
-                if (role.toLowerCase() === "fournisseur") {
-                  if (typeof cosInitSupplier === "function") cosInitSupplier(uid, email);
-                }
-                cosRoute({ role:role, email:email });
-              }).catch(function() {
-                cosRoute({ role:role, email:email });
-              });
-            }).catch(function() {
-              cosRoute({ role:role, email:email });
-            });
-        }
-      })
-      .catch(function() {
-        // Si la table invitations n'existe pas encore → créer normalement
-        if (!company) {
-          if (errEl) { errEl.textContent = "Nom de l'entreprise requis."; errEl.style.display = "block"; }
-          return;
-        }
-        window.COS_DB.from("companies")
-          .insert({ name:company, plan:"decouverte", country:"FR" })
-          .select().single()
-          .then(function(cr) {
-            var cid = cr.data ? cr.data.id : null;
-            window.COS_DB.from("profiles").upsert(
-              { id:uid, company_id:cid, email:email, nom:nom, role:role, onboarded:true },
-              { onConflict:"id" }
-            ).then(function() {
-              window._COS_CID = cid;
-              window._COS_PROFILE = { nom:nom, role:role, email:email, company_id:cid };
-              if (typeof cosInitCompany === "function") cosInitCompany(uid, email);
-              cosRoute({ role:role, email:email });
-            }).catch(function() { cosRoute({ role:role, email:email }); });
-          }).catch(function() { cosRoute({ role:role, email:email }); });
-      });
+            cosRoute({role:role,email:s.user.email});
+          })
+          .catch(function(){cosRoute({role:role,email:s.user.email});});
+      }).catch(function(){cosRoute({role:role,email:s.user.email||""});});
   });
 }
 
@@ -16957,7 +16850,7 @@ function authSignOut() {
     var ov=document.getElementById("cos-ov"); if(ov)ov.style.display="flex"; authReset();
   });
 }
-cosLog("[COS] Auth + Messagerie \u2713");
+console.log("[COS] Auth + Messagerie \u2713");
 
 
 
@@ -17008,14 +16901,14 @@ cosLog("[COS] Auth + Messagerie \u2713");
       .then(function(res) {
         if (res.data && res.data.company_id) {
           window._COS_CID = res.data.company_id;
-          cosLog("[COS Sync] company_id:", window._COS_CID);
+          console.log("[COS Sync] company_id:", window._COS_CID);
           showDot("ok", "Connecté ✓");
           // Charger toutes les données depuis Supabase
           cosLoadAllData();
         }
       })
       .catch(function(e) {
-        cosWarn("[COS Sync] init:", e.message);
+        console.warn("[COS Sync] init:", e.message);
       });
   };
 
@@ -17124,7 +17017,7 @@ cosLog("[COS] Auth + Messagerie \u2713");
         if (items.length) showDot("ok", items.length + " déclaration" + (items.length>1?"s":"") + " chargée" + (items.length>1?"s":""));
       })
       .catch(function(e) {
-        cosWarn("[COS Sync] loadDeclarations:", e.message);
+        console.warn("[COS Sync] loadDeclarations:", e.message);
       });
   }
 
@@ -17185,7 +17078,7 @@ cosLog("[COS] Auth + Messagerie \u2713");
         if (descEl)  descEl.value  = "";
         if (contrEl) contrEl.value = "";
       }).catch(function(e) {
-        cosWarn("[COS] submitCadeau:", e.message);
+        console.warn("[COS] submitCadeau:", e.message);
         // Fallback : comportement original
         _origSubmitCadeau && _origSubmitCadeau();
       });
@@ -17229,7 +17122,7 @@ cosLog("[COS] Auth + Messagerie \u2713");
         if (typeEl) typeEl.value = "";
         if (descEl) descEl.value = "";
       }).catch(function(e) {
-        cosWarn("[COS] submitConflict:", e.message);
+        console.warn("[COS] submitConflict:", e.message);
         _origSubmitConflict && _origSubmitConflict();
       });
     } else {
@@ -17276,7 +17169,7 @@ cosLog("[COS] Auth + Messagerie \u2713");
         );
         if (descEl) descEl.value = "";
       }).catch(function(e) {
-        cosWarn("[COS] submitAlert:", e.message);
+        console.warn("[COS] submitAlert:", e.message);
         _origSubmitAlert && _origSubmitAlert();
       });
     } else {
@@ -17356,7 +17249,7 @@ cosLog("[COS] Auth + Messagerie \u2713");
       }, function(payload) {
         var d = payload.new;
         if (!d) return;
-        cosLog("[COS Realtime] Nouvelle déclaration:", d.type);
+        console.log("[COS Realtime] Nouvelle déclaration:", d.type);
 
         // Afficher notification
         var labels = { cadeau:"cadeau", conflit:"conflit d'intérêts", alerte:"alerte professionnelle" };
@@ -17383,14 +17276,14 @@ cosLog("[COS] Auth + Messagerie \u2713");
       })
       .subscribe();
 
-    cosLog("[COS Realtime] Abonnement actif ✓");
+    console.log("[COS Realtime] Abonnement actif ✓");
   }
 
   // Exposer pour usage externe
   window.cosLoadDeclarations = loadDeclarations;
   window.cosStartRealtime    = startRealtime;
 
-  cosLog("[COS Sync] Module chargé ✓");
+  console.log("[COS Sync] Module chargé ✓");
 })();
 
 
@@ -17495,7 +17388,7 @@ function cosDoInvite() {
               saveSup(); // sync localStorage
             } catch(e) {}
           }
-          cosLog("[COS Supplier] Passeport chargé:", window._COS_SUP_CPO);
+          console.log("[COS Supplier] Passeport chargé:", window._COS_SUP_CPO);
           // Mettre à jour l'affichage de l'ID
           cosUpdateSupId(window._COS_SUP_CPO, res.data.raison_sociale || userEmail);
         } else {
@@ -17504,7 +17397,7 @@ function cosDoInvite() {
         }
       })
       .catch(function(e) {
-        cosWarn("[COS Supplier] init:", e.message);
+        console.warn("[COS Supplier] init:", e.message);
         // Générer un ID local en fallback
         var localId = localStorage.getItem("cos_sup_cpo");
         if (!localId) {
@@ -17545,12 +17438,12 @@ function cosDoInvite() {
         if (res.data) {
           window._COS_SUP_ID  = res.data.id;
           window._COS_SUP_CID = res.data.company_id;
-          cosLog("[COS Supplier] Nouveau passeport créé:", cpoId);
+          console.log("[COS Supplier] Nouveau passeport créé:", cpoId);
           cosUpdateSupId(cpoId, userEmail);
         }
       })
       .catch(function(e) {
-        cosWarn("[COS Supplier] create:", e.message);
+        console.warn("[COS Supplier] create:", e.message);
         cosUpdateSupId(cpoId, userEmail);
       });
   }
@@ -17613,12 +17506,12 @@ function cosDoInvite() {
             action:     "supplier_passport_saved",
             table_name: "supplier_profiles",
             data:       { cpo_id: cpoId, completeness: completeness }
-          }).catch(function(e){cosWarn("[COS] err:",e);});
+          }).catch(function(){});
         }
-        cosLog("[COS Supplier] Passeport sauvegardé:", cpoId, completeness + "%");
+        console.log("[COS Supplier] Passeport sauvegardé:", cpoId, completeness + "%");
       })
       .catch(function(e) {
-        cosWarn("[COS Supplier] saveSup:", e.message);
+        console.warn("[COS Supplier] saveSup:", e.message);
       });
   };
 
@@ -17679,7 +17572,7 @@ function cosDoInvite() {
       .then(function(res) {
         if (!res.data || !res.data.length) return;
         var sups = res.data;
-        cosLog("[COS CCO] " + sups.length + " fournisseur(s) chargés depuis Supabase");
+        console.log("[COS CCO] " + sups.length + " fournisseur(s) chargés depuis Supabase");
 
         // Injecter dans PASSPORTS et DDAC_TIERS
         sups.forEach(function(s) {
@@ -17744,7 +17637,7 @@ function cosDoInvite() {
         }
       })
       .catch(function(e) {
-        cosWarn("[COS CCO] loadSuppliers:", e.message);
+        console.warn("[COS CCO] loadSuppliers:", e.message);
       });
   };
 
@@ -17767,7 +17660,7 @@ function cosDoInvite() {
           "var(--green)"
         );
         // Ouvrir le passeport en lecture
-        cosLog("[COS] Passeport trouvé:", s);
+        console.log("[COS] Passeport trouvé:", s);
       })
       .catch(function(e) {
         typeof toast === "function" && toast("Erreur recherche: " + e.message, "var(--red)");
@@ -17788,98 +17681,9 @@ function cosDoInvite() {
     }
   }, 1000);
 
-  cosLog("[COS Supplier Sync] Module chargé ✓");
+  console.log("[COS Supplier Sync] Module chargé ✓");
 })();
-
-
-
-// Vérifier invitation dès le chargement de l'onboarding
-function cosCheckInviteForOnboard(email) {
-  if (!window.COS_DB || !email) return;
-  window.COS_DB.from("invitations")
-    .select("*")
-    .eq("email", email.toLowerCase())
-    .eq("accepted", false)
-    .limit(1)
-    .then(function(res) {
-      var inv = res.data && res.data[0];
-      if (inv) {
-        // Invitation trouvée : masquer champ entreprise, pré-remplir rôle
-        var companyBlock = document.getElementById("ob-company");
-        var companyLabel = companyBlock ? companyBlock.previousElementSibling : null;
-        if (companyBlock) {
-          companyBlock.parentElement.style.display = "none";
-          if (companyLabel) companyLabel.style.display = "none";
-        }
-
-        // Pré-sélectionner le rôle de l'invitation
-        if (inv.role) {
-          var roleInput = document.querySelector('input[name="ob-role"][value="'+inv.role+'"]');
-          if (roleInput) roleInput.checked = true;
-        }
-
-        // Afficher message
-        var obErr = document.getElementById("ob-err");
-        if (obErr) {
-          obErr.style.display = "block";
-          obErr.style.color = "var(--green, #22c55e)";
-          obErr.textContent = "\u2713 Invitation accept\u00e9e — vous rejoignez l'espace de votre entreprise.";
-        }
-      }
-    })
-    .catch(function(e){cosWarn("[COS] err:",e);});
-}
-
-
-
-function handleDocFile(files){
-  var file=files&&files[0];if(!file)return;
-  if(file.size>10485760){toast('Fichier trop lourd (max 10 MB)','var(--amber)');return;}
-  var el=$('sup-import-result');
-  var name=file.name.toLowerCase();
-  var isWord=name.endsWith('.docx')||name.endsWith('.doc');
-  var isPdf=name.endsWith('.pdf');
-
-  if(el)el.innerHTML='<div class="flex gap8 p14"><div class="spinner-dark" style="width:18px;height:18px;border-width:2.5px"></div><div class="fs12 c-muted">Lecture du document...</div></div>';
-
-  if(isWord){
-    var doExtract=function(){
-      var reader=new FileReader();
-      reader.onload=function(e){
-        if(el)el.innerHTML='<div class="flex gap8 p14"><div class="spinner-dark" style="width:18px;height:18px;border-width:2.5px"></div><div class="fs12 c-muted">Claude analyse le document Word...</div></div>';
-        mammoth.extractRawText({arrayBuffer:e.target.result})
-          .then(function(result){
-            var text=result.value||'';
-            if(!text.trim()){if(el)el.innerHTML='<div class="alert-banner alert-warn">Document Word vide ou illisible</div>';return;}
-            extractFromText(text.substring(0,40000),file.name);
-          }).catch(function(err){
-            if(el)el.innerHTML='<div class="alert-banner alert-warn">Erreur Word: '+err.message+'</div>';
-          });
-      };
-      reader.onerror=function(){toast('Erreur lecture Word','var(--red)');};
-      reader.readAsArrayBuffer(file);
-    };
-    if(typeof mammoth==='undefined'){
-      var s=document.createElement('script');
-      s.src='https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
-      s.onload=doExtract;
-      s.onerror=function(){toast('Impossible de charger mammoth.js','var(--red)');};
-      document.head.appendChild(s);
-    } else { doExtract(); }
-    return;
-  }
-
-  var reader=new FileReader();
-  reader.onload=function(e){
-    if(el)el.innerHTML='<div class="flex gap8 p14"><div class="spinner-dark" style="width:18px;height:18px;border-width:2.5px"></div><div class="fs12 c-muted">Claude analyse le document...</div></div>';
-    if(isPdf)extractFromPdf(e.target.result.split(',')[1],file.name);
-    else extractFromText(String(e.target.result).substring(0,40000),file.name);
-  };
-  reader.onerror=function(){toast('Erreur lecture','var(--red)');};
-  if(isPdf)reader.readAsDataURL(file);else reader.readAsText(file);
-}
 
 </script>
 </body>
-
 </html>
