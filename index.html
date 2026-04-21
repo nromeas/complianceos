@@ -18712,5 +18712,223 @@ function cosDoInvite() {
 })();
 
 </script>
+
+<script>
+
+// ════════════════════════════════════════════════════════════════════════════
+// COMPLIANCEOS v8.2 — FIX AUTH BLINDÉ
+// Résout : bouton qui reste bloqué sur "Connexion..." sans feedback
+// ════════════════════════════════════════════════════════════════════════════
+
+(function() {
+  'use strict';
+
+  // ── 1. Registre UNIVERSEL de onAuthStateChange ──────────────────────────
+  // Le code existant n'enregistrait le listener QUE si l'URL contenait un token.
+  // Avec email+password, l'URL est vierge → aucun listener → le login semblait
+  // réussir mais rien ne se passait.
+  function registerAuthListener() {
+    if (!window.COS_DB || !window.COS_DB.auth) {
+      setTimeout(registerAuthListener, 200);
+      return;
+    }
+    if (window._COS_LISTENER_REGISTERED) return;
+    window._COS_LISTENER_REGISTERED = true;
+
+    window.COS_DB.auth.onAuthStateChange(function(event, session) {
+      console.log('[COS Auth] Event:', event, session ? session.user.email : 'no session');
+      if (typeof cosDebug === 'function') cosDebug('AuthEvent: ' + event);
+
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') && session && session.user) {
+        // Déclencher le routing vers onboarding/dashboard
+        if (typeof window.cosOnAuth === 'function') {
+          window.cosOnAuth(session.user);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        window._COS_CID = null;
+        window._COS_UID = null;
+        window._COS_PROFILE = null;
+      }
+    });
+
+    console.log('[COS Auth] Listener universel enregistré ✓');
+  }
+  registerAuthListener();
+
+  // ── 2. REFONTE cosSignIn avec debugging visible ────────────────────────
+  window.cosSignIn = function() {
+    var email = (document.getElementById('cos-signin-email') || {}).value || '';
+    var pwd   = (document.getElementById('cos-signin-pwd')   || {}).value || '';
+    email = email.trim().toLowerCase();
+
+    var errEl = document.getElementById('cos-signin-err');
+    var btn   = document.getElementById('cos-signin-btn');
+
+    function showErr(msg) {
+      if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+      if (btn)   { btn.textContent = 'Se connecter'; btn.disabled = false; btn.style.opacity = '1'; }
+      console.error('[COS SignIn Err]', msg);
+    }
+
+    if (!email || email.indexOf('@') < 0) return showErr('Email invalide.');
+    if (!pwd  || pwd.length < 6)          return showErr('Mot de passe requis.');
+    if (!window.COS_DB)                    return showErr('Supabase non initialisé — rechargez la page.');
+
+    if (btn) { btn.textContent = 'Connexion...'; btn.disabled = true; btn.style.opacity = '0.6'; }
+    if (errEl) errEl.style.display = 'none';
+
+    console.log('[COS SignIn] Tentative:', email);
+
+    // ── Timeout de sécurité : si rien ne se passe en 12s, on débloque avec erreur ──
+    var timeoutFired = false;
+    var timeoutId = setTimeout(function() {
+      timeoutFired = true;
+      showErr('Pas de réponse du serveur (12s). Vérifiez votre connexion ou contactez le support.');
+    }, 12000);
+
+    try {
+      window.COS_DB.auth.signInWithPassword({ email: email, password: pwd })
+        .then(function(res) {
+          clearTimeout(timeoutId);
+          if (timeoutFired) return;
+
+          console.log('[COS SignIn] Réponse:', res);
+
+          if (res.error) {
+            var msg = res.error.message || 'Erreur de connexion';
+            if (msg.indexOf('Invalid login')       >= 0) msg = 'Email ou mot de passe incorrect.';
+            if (msg.indexOf('Email not confirmed') >= 0) msg = 'Email non confirmé. Vérifiez votre boîte mail ou contactez l\'admin.';
+            if (msg.indexOf('User not found')      >= 0) msg = 'Aucun compte avec cet email. Créez-en un.';
+            return showErr(msg);
+          }
+
+          if (!res.data || !res.data.session || !res.data.user) {
+            return showErr('Connexion échouée : session non créée. Réessayez.');
+          }
+
+          // ── Succès ────────────────────────────────────────────────────
+          console.log('[COS SignIn] OK, session créée pour', res.data.user.email);
+          if (btn) btn.textContent = '✓ Connecté';
+
+          // Appel direct au cas où onAuthStateChange tarde
+          setTimeout(function() {
+            if (typeof window.cosOnAuth === 'function') {
+              window.cosOnAuth(res.data.user);
+            } else {
+              showErr('cosOnAuth manquant — rechargez la page.');
+            }
+          }, 200);
+        })
+        .catch(function(e) {
+          clearTimeout(timeoutId);
+          if (timeoutFired) return;
+          console.error('[COS SignIn] Exception:', e);
+          showErr('Erreur : ' + (e.message || e.toString() || 'inconnue'));
+        });
+    } catch(e) {
+      clearTimeout(timeoutId);
+      console.error('[COS SignIn] Sync exception:', e);
+      showErr('Erreur critique : ' + (e.message || e));
+    }
+  };
+
+  // ── 3. REFONTE cosSignUp avec même blindage ────────────────────────────
+  window.cosSignUp = function() {
+    var email = (document.getElementById('cos-signup-email') || {}).value || '';
+    var pwd   = (document.getElementById('cos-signup-pwd')   || {}).value || '';
+    email = email.trim().toLowerCase();
+
+    var errEl = document.getElementById('cos-signup-err');
+    var btn   = document.getElementById('cos-signup-btn');
+
+    function showErr(msg) {
+      if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+      if (btn)   { btn.textContent = 'Créer mon compte'; btn.disabled = false; btn.style.opacity = '1'; }
+      console.error('[COS SignUp Err]', msg);
+    }
+
+    if (!email || email.indexOf('@') < 0) return showErr('Email invalide.');
+    if (!pwd  || pwd.length < 8)          return showErr('Mot de passe : 8 caractères minimum.');
+    if (!window.COS_DB)                    return showErr('Supabase non initialisé.');
+
+    if (btn) { btn.textContent = 'Création...'; btn.disabled = true; btn.style.opacity = '0.6'; }
+    if (errEl) errEl.style.display = 'none';
+
+    console.log('[COS SignUp] Tentative:', email);
+
+    var timeoutFired = false;
+    var timeoutId = setTimeout(function() {
+      timeoutFired = true;
+      showErr('Pas de réponse du serveur (15s). Vérifiez votre connexion.');
+    }, 15000);
+
+    try {
+      window.COS_DB.auth.signUp({
+        email: email,
+        password: pwd,
+        options: { emailRedirectTo: window.location.origin }
+      })
+        .then(function(res) {
+          clearTimeout(timeoutId);
+          if (timeoutFired) return;
+
+          console.log('[COS SignUp] Réponse:', res);
+
+          if (res.error) {
+            var msg = res.error.message || 'Erreur';
+            if (msg.indexOf('already registered') >= 0 || msg.indexOf('User already') >= 0) {
+              msg = 'Cet email a déjà un compte. Connectez-vous à la place.';
+            }
+            return showErr(msg);
+          }
+
+          if (!res.data || !res.data.user) {
+            return showErr('Compte non créé. Réessayez.');
+          }
+
+          // ── Cas 1 : session immédiate (confirmation désactivée) ─────────
+          if (res.data.session) {
+            console.log('[COS SignUp] OK, session directe');
+            if (btn) btn.textContent = '✓';
+            setTimeout(function() {
+              if (typeof window.cosOnAuth === 'function') {
+                window.cosOnAuth(res.data.user);
+              }
+            }, 200);
+            return;
+          }
+
+          // ── Cas 2 : pas de session (confirmation activée) ─────────────
+          console.log('[COS SignUp] OK mais confirmation email requise');
+          if (btn) btn.textContent = '✓ Compte créé';
+          var form = document.getElementById('cos-form-signup');
+          if (form) {
+            form.innerHTML =
+              '<div style="text-align:center;padding:20px 0">' +
+                '<div style="font-size:42px;margin-bottom:12px">📧</div>' +
+                '<div style="font-size:18px;color:#fff;margin-bottom:8px;font-family:Instrument Serif,serif">Vérifiez votre email</div>' +
+                '<div style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.7;margin-bottom:18px">Un email de confirmation a été envoyé à <b>' + email + '</b>.<br>Cliquez sur le lien pour activer votre compte.</div>' +
+                '<div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:14px;padding:10px;background:rgba(255,255,255,.04);border-radius:8px">⚠ Si vous ne recevez pas l\'email (limite Supabase gratuite 4/h), demandez à l\'admin de désactiver la confirmation ou de confirmer manuellement votre compte.</div>' +
+                '<button onclick="cosAuthTab(\'signin\')" style="padding:10px 22px;background:#d4880a;border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Aller à la connexion →</button>' +
+              '</div>';
+          }
+        })
+        .catch(function(e) {
+          clearTimeout(timeoutId);
+          if (timeoutFired) return;
+          console.error('[COS SignUp] Exception:', e);
+          showErr('Erreur : ' + (e.message || e.toString()));
+        });
+    } catch(e) {
+      clearTimeout(timeoutId);
+      console.error('[COS SignUp] Sync exception:', e);
+      showErr('Erreur critique : ' + (e.message || e));
+    }
+  };
+
+  console.log('[COS Auth v8.2] Fix blindé chargé ✓');
+})();
+
+</script>
 </body>
 </html>
