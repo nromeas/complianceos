@@ -757,6 +757,41 @@ if (window._COS_TOKEN) {
 </script>
 </head>
 <body>
+
+<!-- COS v8 Landing Top Bar -->
+<div id="cos-landing-topbar" style="position:fixed;top:0;left:0;right:0;background:rgba(15,26,46,.95);backdrop-filter:blur(10px);padding:10px 20px;z-index:1000;display:flex;justify-content:flex-end;gap:10px;border-bottom:1px solid rgba(255,255,255,.08);display:none">
+  <button onclick="cosShowDemoMenu()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">👁 Voir la démo</button>
+  <button onclick="cosOpenLogin()" style="background:#D4880A;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Se connecter</button>
+</div>
+<script>
+window.cosShowDemoMenu = function() {
+  var existing = document.getElementById('cos-demo-menu');
+  if (existing) { existing.remove(); return; }
+  var menu = document.createElement('div');
+  menu.id = 'cos-demo-menu';
+  menu.style.cssText = 'position:fixed;top:54px;right:20px;background:#fff;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.25);padding:8px;z-index:1001;min-width:220px';
+  menu.innerHTML = '<div style="padding:10px 12px;font-size:10px;font-weight:700;color:#64748b;letter-spacing:.08em;border-bottom:1px solid #e2e8f0;margin-bottom:4px">DÉMO — DONNÉES FICTIVES</div>' +
+    '<button onclick="enterDemoMode(\'CCO\');document.getElementById(\'cos-demo-menu\').remove()" style="display:block;width:100%;text-align:left;padding:10px 12px;background:none;border:none;border-radius:6px;cursor:pointer;font-size:13px;color:#0F1A2E;font-weight:600;font-family:inherit">👤 Démo CCO</button>' +
+    '<button onclick="enterDemoMode(\'fournisseur\');document.getElementById(\'cos-demo-menu\').remove()" style="display:block;width:100%;text-align:left;padding:10px 12px;background:none;border:none;border-radius:6px;cursor:pointer;font-size:13px;color:#0F1A2E;font-weight:600;font-family:inherit">🏭 Démo Fournisseur</button>' +
+    '<button onclick="enterDemoMode(\'collaborateur\');document.getElementById(\'cos-demo-menu\').remove()" style="display:block;width:100%;text-align:left;padding:10px 12px;background:none;border:none;border-radius:6px;cursor:pointer;font-size:13px;color:#0F1A2E;font-weight:600;font-family:inherit">👥 Démo Collaborateur</button>';
+  document.body.appendChild(menu);
+  setTimeout(function() {
+    document.addEventListener('click', function closeMenu(e) {
+      if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', closeMenu); }
+    });
+  }, 100);
+};
+
+// Afficher la topbar uniquement sur la landing
+setInterval(function() {
+  var landEl = document.getElementById('sc-land');
+  var topbar = document.getElementById('cos-landing-topbar');
+  if (!landEl || !topbar) return;
+  var isLand = landEl.classList.contains('on') || landEl.style.display === 'flex';
+  topbar.style.display = isLand ? 'flex' : 'none';
+}, 500);
+</script>
+
 <div id="cos-ov" style="position:fixed;inset:0;background:#0f1a2e;z-index:99999;display:none;align-items:center;justify-content:center;padding:20px"><div style="width:100%;max-width:400px"><div style="text-align:center;margin-bottom:32px"><div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:10px"><div style="width:36px;height:36px;background:#d4880a;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff">C</div><span style="font-size:22px;color:#fff;font-family:'Instrument Serif',serif">ComplianceOS</span></div><div style="font-size:13px;color:rgba(255,255,255,.35)">La compliance E&amp;C, enfin opérationnelle.</div></div><div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px"><div id="cos-form"><div style="font-size:21px;color:#fff;margin-bottom:5px;font-family:'Instrument Serif',serif">Connexion</div><div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:18px;line-height:1.6">Entrez votre email — vous recevrez un lien de connexion.</div><input id="cos-email" type="email" placeholder="prenom.nom@entreprise.fr" onkeydown="if(event.key==='Enter')authSendLink()" style="width:100%;padding:12px 14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:10px"><div id="cos-err" style="font-size:12px;color:#fca5a5;margin-bottom:10px;display:none"></div><button id="cos-btn" onclick="authSendLink()" style="width:100%;padding:13px;background:#d4880a;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Recevoir mon lien &rarr;</button></div><div id="cos-sent" style="display:none;text-align:center;padding:10px 0"><div style="font-size:42px;margin-bottom:12px">&#128231;</div><div style="font-size:20px;color:#fff;margin-bottom:8px;font-family:'Instrument Serif',serif">Lien envoyé !</div><div style="font-size:13px;color:rgba(255,255,255,.45);line-height:1.7;margin-bottom:18px">Vérifiez votre boîte mail et les spams.<br>Cliquez sur le lien pour vous connecter.</div><button onclick="authReset()" style="padding:8px 20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:7px;color:rgba(255,255,255,.5);font-size:12px;cursor:pointer">Autre email</button></div><div id="cos-loading" style="display:none;text-align:center;padding:10px 0"><div style="font-size:36px;margin-bottom:12px">&#9203;</div><div style="font-size:16px;color:#fff;font-weight:600;margin-bottom:6px">Connexion en cours…</div><div style="font-size:13px;color:rgba(255,255,255,.4)">Vous allez être redirigé.</div></div></div></div></div>
 <div id="cos-ob" style="position:fixed;inset:0;background:#0f1a2e;z-index:99998;display:none;align-items:center;justify-content:center;padding:20px"><div style="width:100%;max-width:460px"><div style="text-align:center;margin-bottom:24px"><div style="display:inline-flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#d4880a;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff">C</div><span style="font-size:20px;color:#fff;font-family:'Instrument Serif',serif">ComplianceOS</span></div></div><div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px"><div style="font-size:20px;color:#fff;margin-bottom:4px;font-family:'Instrument Serif',serif">Bienvenue !</div><div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:20px">Configurez votre espace en 30 secondes.</div><label style="font-size:10px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.35);display:block;margin-bottom:5px">NOM COMPLET</label><input id="ob-nom" type="text" placeholder="Prénom NOM" style="width:100%;padding:11px 13px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:12px"><label style="font-size:10px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.35);display:block;margin-bottom:5px">ENTREPRISE</label><input id="ob-company" type="text" placeholder="Nom de votre entreprise" style="width:100%;padding:11px 13px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:12px"><label style="font-size:10px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.35);display:block;margin-bottom:8px">VOTRE RÔLE</label><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:20px"><label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer"><input type="radio" name="ob-role" value="CCO" checked style="accent-color:#d4880a"><div><div style="font-size:13px;color:#fff;font-weight:600">Responsable Compliance / CCO</div><div style="font-size:11px;color:rgba(255,255,255,.35)">Accès plateforme pilotage</div></div></label><label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer"><input type="radio" name="ob-role" value="fournisseur" style="accent-color:#d4880a"><div><div style="font-size:13px;color:#fff;font-weight:600">Fournisseur</div><div style="font-size:11px;color:rgba(255,255,255,.35)">Accès Passeport Compliance</div></div></label><label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer"><input type="radio" name="ob-role" value="collaborateur" style="accent-color:#d4880a"><div><div style="font-size:13px;color:#fff;font-weight:600">Collaborateur</div><div style="font-size:11px;color:rgba(255,255,255,.35)">Espace déclarations</div></div></label></div><div id="ob-err" style="font-size:12px;color:#fca5a5;margin-bottom:10px;display:none"></div><button onclick="authOnboard()" style="width:100%;padding:13px;background:#d4880a;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Accéder à ma plateforme &rarr;</button></div></div></div>
 
@@ -3654,7 +3689,8 @@ async function runTemplate() {
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
-  showSc('land');
+  // Bootstrap v8 gère le routing initial (auth/session check)
+  // showSc('land') par défaut sera fait par cosBootstrap s'il n'y a pas de session
   // Keyboard shortcut for chat
   document.addEventListener('keydown', e => {
     if(e.key==='Enter' && document.activeElement?.id==='chat-inp') sendCopilote();
@@ -18159,5 +18195,185 @@ function cosDoInvite() {
 })();
 </script>
 
+
+<script>
+
+// ════════════════════════════════════════════════════════════════════════════
+// COMPLIANCEOS v8 — AUTH WALL
+// Force authentification avant l'accès à l'app (CCO/Supplier/Collab)
+// Mode démo explicite avec disclaimer
+// ════════════════════════════════════════════════════════════════════════════
+
+(function() {
+  'use strict';
+
+  // Indique qu'on est en mode démo (données fictives, pas de persistance)
+  window._COS_DEMO_MODE = false;
+
+  // ── Entrée dans le mode démo (datas fictives, pas de Supabase) ──────────
+  window.enterDemoMode = function(role) {
+    role = role || 'CCO';
+    window._COS_DEMO_MODE = true;
+    if (typeof cosDebug === 'function') cosDebug('Démo mode: ' + role);
+
+    // Afficher un banner démo permanent
+    showDemoBanner();
+
+    if (role === 'fournisseur') {
+      if (typeof showSc === 'function') showSc('supplier');
+      if (typeof supTab === 'function') supTab('dash');
+    } else if (role === 'collaborateur') {
+      if (typeof showSc === 'function') showSc('collab');
+      if (typeof renderCollabInterface === 'function') renderCollabInterface();
+    } else {
+      if (typeof showSc === 'function') showSc('cco');
+      if (typeof ccoTab === 'function') ccoTab('dashboard');
+    }
+  };
+
+  function showDemoBanner() {
+    var existing = document.getElementById('cos-demo-banner');
+    if (existing) return;
+    var banner = document.createElement('div');
+    banner.id = 'cos-demo-banner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#fbbf24;color:#78350f;padding:8px 16px;text-align:center;font-size:12px;font-weight:700;z-index:10000;box-shadow:0 2px 8px rgba(0,0,0,.15)';
+    banner.innerHTML = 'MODE DÉMO — Données fictives, non persistées. ' +
+      '<a href="javascript:void(0)" onclick="window.location.reload()" style="color:#78350f;text-decoration:underline;margin-left:12px">Quitter la démo</a>';
+    document.body.appendChild(banner);
+    // Décaler le contenu du body
+    document.body.style.paddingTop = '36px';
+  }
+
+  // ── Vérifier si l'utilisateur est authentifié ───────────────────────────
+  function isAuthenticated() {
+    return !!(window._COS_CID && window._COS_PROFILE && window._COS_UID);
+  }
+
+  // ── Ouvrir le login overlay ─────────────────────────────────────────────
+  window.cosOpenLogin = function(redirectRole) {
+    window._COS_REDIRECT_ROLE = redirectRole || null;
+    var ov = document.getElementById('cos-ov');
+    if (ov) ov.style.display = 'flex';
+  };
+
+  // ── OVERRIDE des enterXXX() pour forcer auth avant accès ────────────────
+  var _origEnterCCO      = window.enterCCO;
+  var _origEnterSupplier = window.enterSupplier;
+  var _origEnterCollab   = window.enterCollab;
+
+  window.enterCCO = function() {
+    if (window._COS_DEMO_MODE) {
+      return _origEnterCCO ? _origEnterCCO() : (showSc('cco'), ccoTab('dashboard'));
+    }
+    if (isAuthenticated()) {
+      var role = (window._COS_PROFILE.role || 'CCO').toLowerCase();
+      if (role === 'cco' || role === 'collaborateur' || role === 'manager' || role === 'directeur') {
+        return _origEnterCCO ? _origEnterCCO() : (showSc('cco'), ccoTab('dashboard'));
+      } else {
+        if (typeof toast === 'function') toast('Accès non autorisé pour ce rôle', 'var(--amber)');
+        return;
+      }
+    }
+    window.cosOpenLogin('CCO');
+  };
+
+  window.enterSupplier = function() {
+    if (window._COS_DEMO_MODE) {
+      return _origEnterSupplier ? _origEnterSupplier() : (showSc('supplier'), supTab('dash'));
+    }
+    if (isAuthenticated()) {
+      var role = (window._COS_PROFILE.role || '').toLowerCase();
+      if (role === 'fournisseur') {
+        return _origEnterSupplier ? _origEnterSupplier() : (showSc('supplier'), supTab('dash'));
+      }
+      if (typeof toast === 'function') toast('Accès réservé aux fournisseurs', 'var(--amber)');
+      return;
+    }
+    window.cosOpenLogin('fournisseur');
+  };
+
+  window.enterCollab = function() {
+    if (window._COS_DEMO_MODE) {
+      return _origEnterCollab ? _origEnterCollab() : (showSc('collab'), renderCollabInterface());
+    }
+    if (isAuthenticated()) {
+      return _origEnterCollab ? _origEnterCollab() : (showSc('collab'), renderCollabInterface());
+    }
+    window.cosOpenLogin('collaborateur');
+  };
+
+  // ── Bouton de déconnexion global ────────────────────────────────────────
+  window.cosSignOut = function() {
+    if (!window.COS_DB) { window.location.reload(); return; }
+    window.COS_DB.auth.signOut().then(function() {
+      window._COS_CID     = null;
+      window._COS_UID     = null;
+      window._COS_PROFILE = null;
+      window._COS_DEMO_MODE = false;
+      if (typeof toast === 'function') toast('Déconnecté', 'var(--green)');
+      setTimeout(function() { window.location.reload(); }, 500);
+    }).catch(function() { window.location.reload(); });
+  };
+
+  // ── Injecter un bouton logout dans la sidebar CCO ───────────────────────
+  function injectLogoutButton() {
+    var existing = document.getElementById('cos-logout-btn');
+    if (existing) return;
+    var btn = document.createElement('button');
+    btn.id = 'cos-logout-btn';
+    btn.onclick = window.cosSignOut;
+    btn.title = 'Se déconnecter';
+    btn.style.cssText = 'position:fixed;top:12px;right:12px;background:rgba(15,26,46,.85);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;z-index:9998;display:none;font-family:inherit';
+    btn.innerHTML = '↗ Déconnexion';
+    document.body.appendChild(btn);
+    // Afficher seulement quand connecté
+    setInterval(function() {
+      btn.style.display = isAuthenticated() ? 'block' : 'none';
+    }, 1000);
+  }
+
+  // ── BOOTSTRAP au chargement : vérifier session, router ──────────────────
+  window.cosBootstrap = function() {
+    if (typeof cosDebug === 'function') cosDebug('Bootstrap v8 démarrage');
+    injectLogoutButton();
+
+    if (!window.COS_DB) {
+      if (typeof cosDebug === 'function') cosDebug('COS_DB absent, mode landing');
+      if (typeof showSc === 'function') showSc('land');
+      return;
+    }
+
+    // Vérifier session existante
+    window.COS_DB.auth.getSession().then(function(r) {
+      var s = r && r.data && r.data.session;
+      if (s && s.user) {
+        if (typeof cosDebug === 'function') cosDebug('Session trouvée: ' + s.user.email);
+        // Déclenche onAuth qui chargera le profil et routera correctement
+        if (typeof window.cosOnAuth === 'function') {
+          window.cosOnAuth(s.user);
+        }
+      } else {
+        if (typeof cosDebug === 'function') cosDebug('Pas de session — landing');
+        if (typeof showSc === 'function') showSc('land');
+      }
+    }).catch(function(e) {
+      if (typeof cosDebug === 'function') cosDebug('Bootstrap err: ' + e);
+      if (typeof showSc === 'function') showSc('land');
+    });
+  };
+
+  // ── Démarrer au bon moment ──────────────────────────────────────────────
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(window.cosBootstrap, 100);
+    });
+  } else {
+    setTimeout(window.cosBootstrap, 100);
+  }
+
+  if (typeof cosDebug === 'function') cosDebug('Auth Wall v8 chargé');
+})();
+
+</script>
 </body>
 </html>
