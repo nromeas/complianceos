@@ -792,7 +792,96 @@ setInterval(function() {
 }, 500);
 </script>
 
-<div id="cos-ov" style="position:fixed;inset:0;background:#0f1a2e;z-index:99999;display:none;align-items:center;justify-content:center;padding:20px"><div style="width:100%;max-width:400px"><div style="text-align:center;margin-bottom:32px"><div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:10px"><div style="width:36px;height:36px;background:#d4880a;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff">C</div><span style="font-size:22px;color:#fff;font-family:'Instrument Serif',serif">ComplianceOS</span></div><div style="font-size:13px;color:rgba(255,255,255,.35)">La compliance E&amp;C, enfin opérationnelle.</div></div><div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px"><div id="cos-form"><div style="font-size:21px;color:#fff;margin-bottom:5px;font-family:'Instrument Serif',serif">Connexion</div><div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:18px;line-height:1.6">Entrez votre email — vous recevrez un lien de connexion.</div><input id="cos-email" type="email" placeholder="prenom.nom@entreprise.fr" onkeydown="if(event.key==='Enter')authSendLink()" style="width:100%;padding:12px 14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:10px"><div id="cos-err" style="font-size:12px;color:#fca5a5;margin-bottom:10px;display:none"></div><button id="cos-btn" onclick="authSendLink()" style="width:100%;padding:13px;background:#d4880a;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Recevoir mon lien &rarr;</button></div><div id="cos-sent" style="display:none;text-align:center;padding:10px 0"><div style="font-size:42px;margin-bottom:12px">&#128231;</div><div style="font-size:20px;color:#fff;margin-bottom:8px;font-family:'Instrument Serif',serif">Lien envoyé !</div><div style="font-size:13px;color:rgba(255,255,255,.45);line-height:1.7;margin-bottom:18px">Vérifiez votre boîte mail et les spams.<br>Cliquez sur le lien pour vous connecter.</div><button onclick="authReset()" style="padding:8px 20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:7px;color:rgba(255,255,255,.5);font-size:12px;cursor:pointer">Autre email</button></div><div id="cos-loading" style="display:none;text-align:center;padding:10px 0"><div style="font-size:36px;margin-bottom:12px">&#9203;</div><div style="font-size:16px;color:#fff;font-weight:600;margin-bottom:6px">Connexion en cours…</div><div style="font-size:13px;color:rgba(255,255,255,.4)">Vous allez être redirigé.</div></div></div></div></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     OVERLAY AUTH v8 — Email + Password
+     Remplace intégralement l'ancien cos-ov
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div id="cos-ov" style="position:fixed;inset:0;background:#0f1a2e;z-index:99999;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="width:100%;max-width:420px">
+    <!-- Logo / titre -->
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:36px;height:36px;background:#d4880a;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff">C</div>
+        <span style="font-size:22px;color:#fff;font-family:'Instrument Serif',serif">ComplianceOS</span>
+      </div>
+      <div style="font-size:13px;color:rgba(255,255,255,.35)">La compliance E&amp;C, enfin opérationnelle.</div>
+    </div>
+
+    <!-- Card -->
+    <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px">
+
+      <!-- Tabs Sign In / Sign Up -->
+      <div style="display:flex;gap:4px;background:rgba(0,0,0,.25);border-radius:9px;padding:4px;margin-bottom:20px">
+        <button id="cos-tab-signin" onclick="cosAuthTab('signin')" style="flex:1;padding:9px;background:rgba(255,255,255,.1);border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Se connecter</button>
+        <button id="cos-tab-signup" onclick="cosAuthTab('signup')" style="flex:1;padding:9px;background:transparent;border:none;border-radius:6px;color:rgba(255,255,255,.5);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Créer un compte</button>
+      </div>
+
+      <!-- FORM SIGN IN -->
+      <div id="cos-form-signin">
+        <div style="font-size:21px;color:#fff;margin-bottom:4px;font-family:'Instrument Serif',serif">Bienvenue</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">Connectez-vous à votre espace.</div>
+
+        <label style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.5);display:block;margin-bottom:5px">EMAIL</label>
+        <input id="cos-signin-email" type="email" autocomplete="email" placeholder="prenom.nom@entreprise.fr"
+          onkeydown="if(event.key==='Enter')document.getElementById('cos-signin-pwd').focus()"
+          style="width:100%;padding:11px 13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:11px;font-family:inherit">
+
+        <label style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.5);display:block;margin-bottom:5px">MOT DE PASSE</label>
+        <input id="cos-signin-pwd" type="password" autocomplete="current-password" placeholder="••••••••"
+          onkeydown="if(event.key==='Enter')cosSignIn()"
+          style="width:100%;padding:11px 13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:6px;font-family:inherit">
+
+        <div style="text-align:right;margin-bottom:14px">
+          <a href="javascript:void(0)" onclick="cosForgotPassword()" style="font-size:11px;color:rgba(212,136,10,.8);text-decoration:none">Mot de passe oublié ?</a>
+        </div>
+
+        <div id="cos-signin-err" style="font-size:12px;color:#fca5a5;margin-bottom:10px;display:none;padding:8px 10px;background:rgba(252,165,165,.1);border-radius:6px"></div>
+
+        <button id="cos-signin-btn" onclick="cosSignIn()" style="width:100%;padding:13px;background:#d4880a;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Se connecter</button>
+
+        <div style="text-align:center;margin-top:14px">
+          <a href="javascript:void(0)" onclick="cosAuthTab('signup')" style="font-size:12px;color:rgba(255,255,255,.5);text-decoration:none">Pas encore de compte ? <span style="color:#d4880a;font-weight:600">Créer un compte</span></a>
+        </div>
+      </div>
+
+      <!-- FORM SIGN UP -->
+      <div id="cos-form-signup" style="display:none">
+        <div style="font-size:21px;color:#fff;margin-bottom:4px;font-family:'Instrument Serif',serif">Créer votre compte</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">Moins de 2 minutes pour commencer.</div>
+
+        <label style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.5);display:block;margin-bottom:5px">EMAIL PROFESSIONNEL</label>
+        <input id="cos-signup-email" type="email" autocomplete="email" placeholder="prenom.nom@entreprise.fr"
+          onkeydown="if(event.key==='Enter')document.getElementById('cos-signup-pwd').focus()"
+          style="width:100%;padding:11px 13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:11px;font-family:inherit">
+
+        <label style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.5);display:block;margin-bottom:5px">MOT DE PASSE <span style="font-weight:400;opacity:.6">(8 caractères min.)</span></label>
+        <input id="cos-signup-pwd" type="password" autocomplete="new-password" placeholder="••••••••"
+          onkeydown="if(event.key==='Enter')cosSignUp()"
+          style="width:100%;padding:11px 13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:14px;font-family:inherit">
+
+        <div id="cos-signup-err" style="font-size:12px;color:#fca5a5;margin-bottom:10px;display:none;padding:8px 10px;background:rgba(252,165,165,.1);border-radius:6px"></div>
+
+        <button id="cos-signup-btn" onclick="cosSignUp()" style="width:100%;padding:13px;background:#d4880a;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Créer mon compte</button>
+
+        <div style="text-align:center;margin-top:14px">
+          <a href="javascript:void(0)" onclick="cosAuthTab('signin')" style="font-size:12px;color:rgba(255,255,255,.5);text-decoration:none">Déjà un compte ? <span style="color:#d4880a;font-weight:600">Se connecter</span></a>
+        </div>
+
+        <div style="font-size:10px;color:rgba(255,255,255,.3);text-align:center;margin-top:18px;line-height:1.5">
+          En créant un compte, vous acceptez nos conditions d'utilisation.<br>Vos données restent strictement confidentielles.
+        </div>
+      </div>
+
+      <!-- CLOSE (retour landing) -->
+      <div style="text-align:center;margin-top:20px">
+        <a href="javascript:void(0)" onclick="cosCloseLogin()" style="font-size:11px;color:rgba(255,255,255,.3);text-decoration:none">← Retour à l'accueil</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <div id="cos-ob" style="position:fixed;inset:0;background:#0f1a2e;z-index:99998;display:none;align-items:center;justify-content:center;padding:20px"><div style="width:100%;max-width:460px"><div style="text-align:center;margin-bottom:24px"><div style="display:inline-flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#d4880a;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff">C</div><span style="font-size:20px;color:#fff;font-family:'Instrument Serif',serif">ComplianceOS</span></div></div><div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px"><div style="font-size:20px;color:#fff;margin-bottom:4px;font-family:'Instrument Serif',serif">Bienvenue !</div><div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:20px">Configurez votre espace en 30 secondes.</div><label style="font-size:10px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.35);display:block;margin-bottom:5px">NOM COMPLET</label><input id="ob-nom" type="text" placeholder="Prénom NOM" style="width:100%;padding:11px 13px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:12px"><label style="font-size:10px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.35);display:block;margin-bottom:5px">ENTREPRISE</label><input id="ob-company" type="text" placeholder="Nom de votre entreprise" style="width:100%;padding:11px 13px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:12px"><label style="font-size:10px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.35);display:block;margin-bottom:8px">VOTRE RÔLE</label><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:20px"><label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer"><input type="radio" name="ob-role" value="CCO" checked style="accent-color:#d4880a"><div><div style="font-size:13px;color:#fff;font-weight:600">Responsable Compliance / CCO</div><div style="font-size:11px;color:rgba(255,255,255,.35)">Accès plateforme pilotage</div></div></label><label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer"><input type="radio" name="ob-role" value="fournisseur" style="accent-color:#d4880a"><div><div style="font-size:13px;color:#fff;font-weight:600">Fournisseur</div><div style="font-size:11px;color:rgba(255,255,255,.35)">Accès Passeport Compliance</div></div></label><label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer"><input type="radio" name="ob-role" value="collaborateur" style="accent-color:#d4880a"><div><div style="font-size:13px;color:#fff;font-weight:600">Collaborateur</div><div style="font-size:11px;color:rgba(255,255,255,.35)">Espace déclarations</div></div></label></div><div id="ob-err" style="font-size:12px;color:#fca5a5;margin-bottom:10px;display:none"></div><button onclick="authOnboard()" style="width:100%;padding:13px;background:#d4880a;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Accéder à ma plateforme &rarr;</button></div></div></div>
 
 
@@ -16840,21 +16929,9 @@ function cosRoute(p) {
 }
 
 function authSendLink() {
-  var emailEl=document.getElementById("cos-email"),btn=document.getElementById("cos-btn"),errEl=document.getElementById("cos-err");
-  var email=emailEl?emailEl.value.trim():"";
-  if(!email||email.indexOf("@")<0){if(errEl){errEl.textContent="Email invalide.";errEl.style.display="block";}return;}
-  if(!window.COS_DB){if(errEl){errEl.textContent="Erreur init. Rechargez la page.";errEl.style.display="block";}return;}
-  if(btn){btn.textContent="Envoi\u2026";btn.disabled=true;btn.style.opacity="0.6";}
-  if(errEl)errEl.style.display="none";
-  window.COS_DB.auth.signInWithOtp({email:email,options:{emailRedirectTo:"https://complianceos1.netlify.app"}})
-    .then(function(res){
-      if(res.error){if(errEl){errEl.textContent="Erreur\u00a0: "+res.error.message;errEl.style.display="block";}if(btn){btn.textContent="Recevoir mon lien \u2192";btn.disabled=false;btn.style.opacity="1";}return;}
-      var fm=document.getElementById("cos-form"),sent=document.getElementById("cos-sent");
-      if(fm)fm.style.display="none"; if(sent)sent.style.display="block";
-    }).catch(function(e){
-      if(errEl){errEl.textContent="Erreur\u00a0: "+(e.message||"inconnue");errEl.style.display="block";}
-      if(btn){btn.textContent="Recevoir mon lien \u2192";btn.disabled=false;btn.style.opacity="1";}
-    });
+  // v8 : magic link désactivé, rediriger vers signin avec password
+  if (typeof cosAuthTab === 'function') cosAuthTab('signin');
+  else if (typeof cosOpenLogin === 'function') cosOpenLogin();
 }
 
 function authReset() {
@@ -18372,6 +18449,266 @@ function cosDoInvite() {
   }
 
   if (typeof cosDebug === 'function') cosDebug('Auth Wall v8 chargé');
+})();
+
+</script>
+
+<script>
+
+// ════════════════════════════════════════════════════════════════════════════
+// COMPLIANCEOS v8 — AUTH MODULE (Email + Password)
+// Remplace le magic link par un vrai système email/password
+// ════════════════════════════════════════════════════════════════════════════
+
+(function() {
+  'use strict';
+
+  // ── État global ─────────────────────────────────────────────────────────
+  window._COS_DEMO_MODE = window._COS_DEMO_MODE || false;
+
+  // ── Tabs Sign In / Sign Up ──────────────────────────────────────────────
+  window.cosAuthTab = function(tab) {
+    var tabSignin = document.getElementById('cos-tab-signin');
+    var tabSignup = document.getElementById('cos-tab-signup');
+    var frmSignin = document.getElementById('cos-form-signin');
+    var frmSignup = document.getElementById('cos-form-signup');
+    if (!tabSignin) return;
+
+    if (tab === 'signup') {
+      tabSignup.style.background = 'rgba(255,255,255,.1)'; tabSignup.style.color = '#fff';
+      tabSignin.style.background = 'transparent';         tabSignin.style.color = 'rgba(255,255,255,.5)';
+      frmSignup.style.display = 'block'; frmSignin.style.display = 'none';
+    } else {
+      tabSignin.style.background = 'rgba(255,255,255,.1)'; tabSignin.style.color = '#fff';
+      tabSignup.style.background = 'transparent';         tabSignup.style.color = 'rgba(255,255,255,.5)';
+      frmSignin.style.display = 'block'; frmSignup.style.display = 'none';
+    }
+    // Reset erreurs
+    var errIn = document.getElementById('cos-signin-err');
+    var errUp = document.getElementById('cos-signup-err');
+    if (errIn) errIn.style.display = 'none';
+    if (errUp) errUp.style.display = 'none';
+  };
+
+  function showErr(elId, msg) {
+    var el = document.getElementById(elId);
+    if (!el) { alert(msg); return; }
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function setBtn(id, txt, disabled) {
+    var b = document.getElementById(id);
+    if (!b) return;
+    b.textContent = txt;
+    b.disabled = !!disabled;
+    b.style.opacity = disabled ? '0.6' : '1';
+  }
+
+  // ── SIGN IN ─────────────────────────────────────────────────────────────
+  window.cosSignIn = function() {
+    var email = (document.getElementById('cos-signin-email') || {}).value || '';
+    var pwd   = (document.getElementById('cos-signin-pwd')   || {}).value || '';
+    email = email.trim().toLowerCase();
+
+    if (!email || email.indexOf('@') < 0) return showErr('cos-signin-err', 'Email invalide.');
+    if (!pwd || pwd.length < 6)           return showErr('cos-signin-err', 'Mot de passe requis.');
+    if (!window.COS_DB)                    return showErr('cos-signin-err', 'Erreur init. Rechargez la page.');
+
+    setBtn('cos-signin-btn', 'Connexion...', true);
+    var errEl = document.getElementById('cos-signin-err');
+    if (errEl) errEl.style.display = 'none';
+
+    window.COS_DB.auth.signInWithPassword({ email: email, password: pwd })
+      .then(function(res) {
+        if (res.error) {
+          setBtn('cos-signin-btn', 'Se connecter', false);
+          var msg = res.error.message || 'Erreur de connexion';
+          if (msg.indexOf('Invalid login') >= 0) msg = 'Email ou mot de passe incorrect.';
+          if (msg.indexOf('Email not confirmed') >= 0) msg = 'Email non confirmé. Vérifiez votre boîte mail.';
+          return showErr('cos-signin-err', msg);
+        }
+        if (typeof cosDebug === 'function') cosDebug('SignIn OK: ' + email);
+        // La session est maintenant active. cosOnAuth sera déclenché par onAuthStateChange.
+        // On déclenche manuellement au cas où.
+        if (res.data && res.data.user && typeof window.cosOnAuth === 'function') {
+          window.cosOnAuth(res.data.user);
+        }
+      })
+      .catch(function(e) {
+        setBtn('cos-signin-btn', 'Se connecter', false);
+        showErr('cos-signin-err', 'Erreur: ' + (e.message || 'inconnue'));
+      });
+  };
+
+  // ── SIGN UP ─────────────────────────────────────────────────────────────
+  window.cosSignUp = function() {
+    var email = (document.getElementById('cos-signup-email') || {}).value || '';
+    var pwd   = (document.getElementById('cos-signup-pwd')   || {}).value || '';
+    email = email.trim().toLowerCase();
+
+    if (!email || email.indexOf('@') < 0) return showErr('cos-signup-err', 'Email invalide.');
+    if (!pwd || pwd.length < 8)           return showErr('cos-signup-err', 'Mot de passe : 8 caractères minimum.');
+    if (!window.COS_DB)                    return showErr('cos-signup-err', 'Erreur init. Rechargez la page.');
+
+    setBtn('cos-signup-btn', 'Création...', true);
+    var errEl = document.getElementById('cos-signup-err');
+    if (errEl) errEl.style.display = 'none';
+
+    window.COS_DB.auth.signUp({
+      email: email,
+      password: pwd,
+      options: {
+        emailRedirectTo: window.location.origin
+      }
+    })
+      .then(function(res) {
+        if (res.error) {
+          setBtn('cos-signup-btn', 'Créer mon compte', false);
+          var msg = res.error.message || 'Erreur';
+          if (msg.indexOf('already registered') >= 0 || msg.indexOf('User already') >= 0) {
+            msg = 'Cet email est déjà utilisé. Connectez-vous.';
+          }
+          return showErr('cos-signup-err', msg);
+        }
+        if (typeof cosDebug === 'function') cosDebug('SignUp OK: ' + email);
+
+        // ── Cas 1 : confirmation email DÉSACTIVÉE dans Supabase → session immédiate
+        if (res.data && res.data.session) {
+          if (typeof cosDebug === 'function') cosDebug('Session directe, redirect onboarding');
+          // Lancer l'onboarding directement
+          setBtn('cos-signup-btn', '✓', true);
+          setTimeout(function() {
+            if (typeof window.cosOnAuth === 'function') {
+              window.cosOnAuth(res.data.user);
+            }
+          }, 300);
+          return;
+        }
+
+        // ── Cas 2 : confirmation email ACTIVÉE → afficher message "vérifiez email"
+        setBtn('cos-signup-btn', '✓ Compte créé', true);
+        var form = document.getElementById('cos-form-signup');
+        if (form) {
+          form.innerHTML = '<div style="text-align:center;padding:20px 0">' +
+            '<div style="font-size:42px;margin-bottom:12px">📧</div>' +
+            '<div style="font-size:18px;color:#fff;margin-bottom:8px;font-family:Instrument Serif,serif">Vérifiez votre email</div>' +
+            '<div style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.7;margin-bottom:18px">Un email de confirmation a été envoyé à <b>' + email + '</b>. Cliquez sur le lien pour activer votre compte, puis connectez-vous.</div>' +
+            '<button onclick="cosAuthTab(\'signin\')" style="padding:10px 22px;background:#d4880a;border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Aller à la connexion →</button>' +
+          '</div>';
+        }
+      })
+      .catch(function(e) {
+        setBtn('cos-signup-btn', 'Créer mon compte', false);
+        showErr('cos-signup-err', 'Erreur: ' + (e.message || 'inconnue'));
+      });
+  };
+
+  // ── Mot de passe oublié ─────────────────────────────────────────────────
+  window.cosForgotPassword = function() {
+    var email = prompt('Entrez votre email pour recevoir un lien de réinitialisation :');
+    if (!email) return;
+    email = email.trim().toLowerCase();
+    if (!email || email.indexOf('@') < 0) { alert('Email invalide.'); return; }
+    if (!window.COS_DB) return;
+
+    window.COS_DB.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+      .then(function(res) {
+        if (res.error) { alert('Erreur : ' + res.error.message); return; }
+        alert('✓ Si cet email existe, un lien de réinitialisation a été envoyé.');
+      });
+  };
+
+  // ── Fermer le login (retour landing) ────────────────────────────────────
+  window.cosCloseLogin = function() {
+    var ov = document.getElementById('cos-ov');
+    if (ov) ov.style.display = 'none';
+    if (typeof showSc === 'function') showSc('land');
+  };
+
+  // ── Ouvrir le login ─────────────────────────────────────────────────────
+  window.cosOpenLogin = function() {
+    var ov = document.getElementById('cos-ov');
+    if (ov) ov.style.display = 'flex';
+    cosAuthTab('signin');
+  };
+
+  // ── Déconnexion ─────────────────────────────────────────────────────────
+  window.cosSignOut = function() {
+    if (!window.COS_DB) { window.location.reload(); return; }
+    window.COS_DB.auth.signOut().then(function() {
+      window._COS_CID = null; window._COS_UID = null; window._COS_PROFILE = null;
+      window._COS_DEMO_MODE = false;
+      if (typeof toast === 'function') toast('Déconnecté', 'var(--green)');
+      setTimeout(function() { window.location.reload(); }, 400);
+    }).catch(function() { window.location.reload(); });
+  };
+
+  // ── Session check periodique (backup au cas où onAuthStateChange plante) ─
+  window.cosCheckSession = function() {
+    if (!window.COS_DB) return;
+    return window.COS_DB.auth.getSession().then(function(r) {
+      var s = r && r.data && r.data.session;
+      return s && s.user ? s.user : null;
+    });
+  };
+
+  if (typeof cosDebug === 'function') cosDebug('Auth email+password v8 chargé');
+})();
+
+</script>
+
+<script>
+
+// ── v8.1 Protection mode démo : les données démo ne vont JAMAIS en DB ──────
+(function() {
+  'use strict';
+  var origSubmit = {
+    cadeau:  window.submitCadeau,
+    conflit: window.submitConflict,
+    alerte:  window.submitAlert
+  };
+
+  function demoBlock(type) {
+    if (window._COS_DEMO_MODE) {
+      if (typeof toast === 'function') {
+        toast("Mode démo : action simulée, aucune donnée enregistrée.", "var(--amber)");
+      }
+      if (typeof cosDebug === 'function') cosDebug('DEMO: ' + type + ' bloqué');
+      return true;
+    }
+    return false;
+  }
+
+  if (typeof window.submitCadeau === 'function') {
+    window.submitCadeau = function() {
+      if (demoBlock('cadeau')) return;
+      return origSubmit.cadeau.apply(this, arguments);
+    };
+  }
+  if (typeof window.submitConflict === 'function') {
+    window.submitConflict = function() {
+      if (demoBlock('conflit')) return;
+      return origSubmit.conflit.apply(this, arguments);
+    };
+  }
+  if (typeof window.submitAlert === 'function') {
+    window.submitAlert = function() {
+      if (demoBlock('alerte')) return;
+      return origSubmit.alerte.apply(this, arguments);
+    };
+  }
+
+  // Bloquer aussi les invitations en mode démo
+  var origInvite = window.cosInviteUser;
+  if (typeof origInvite === 'function') {
+    window.cosInviteUser = function() {
+      if (demoBlock('invitation')) return Promise.reject('demo mode');
+      return origInvite.apply(this, arguments);
+    };
+  }
+
+  if (typeof cosDebug === 'function') cosDebug('Protection mode démo v8.1 active');
 })();
 
 </script>
