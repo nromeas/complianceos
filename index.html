@@ -704,17 +704,13 @@ window.COS_DB = window.supabase.createClient(
 );
 var _h = window.location.hash || "", _s = window.location.search || "";
 window._COS_TOKEN = _h.indexOf("access_token")>-1||_s.indexOf("access_token")>-1||_h.indexOf("type=magiclink")>-1;
-if (window._COS_TOKEN) {
-  window.COS_DB.auth.onAuthStateChange(function(ev, session) {
-    if (ev === "SIGNED_IN" && session) { window._COS_SESSION = session; }
-  });
-}
+/* v10 handles magic link token */
 </script>
 </head>
 <body>
 <!-- COS v8 Landing Top Bar -->
 <div id="cos-landing-topbar" style="position:fixed;top:0;left:0;right:0;background:rgba(15,26,46,.95);backdrop-filter:blur(10px);padding:10px 20px;z-index:1000;display:flex;justify-content:flex-end;gap:10px;border-bottom:1px solid rgba(255,255,255,.08);display:none">
-  <button onclick="wizOpen()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Créer un compte</button>
+  <button onclick="openOverlay('signup')" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">👁 Voir la démo</button>
   <button onclick="cosOpenLogin()" style="background:#D4880A;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Se connecter</button>
 </div>
 <script>
@@ -748,73 +744,100 @@ setInterval(function() {
      OVERLAY AUTH v8 — Email + Password
      Remplace intégralement l'ancien cos-ov
      ═══════════════════════════════════════════════════════════════════════ -->
-<div id="cos-ov" style="position:fixed;inset:0;background:#0f1a2e;z-index:99999;display:none;align-items:center;justify-content:center;padding:20px">
-  <div style="width:100%;max-width:420px">
-    <!-- Logo / titre -->
-    <div style="text-align:center;margin-bottom:28px">
+<!-- ═══════════════════════════════════════════════════════════════════════
+     AUTH OVERLAY MINIMAL (v10) — signin + signup + onboarding en 1 écran
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div id="cos-ov" style="position:fixed;inset:0;background:#0f1a2e;z-index:99999;display:none;align-items:center;justify-content:center;padding:20px;overflow-y:auto">
+  <div style="width:100%;max-width:440px;margin:40px auto">
+
+    <div style="text-align:center;margin-bottom:26px">
       <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:8px">
-        <div style="width:36px;height:36px;background:#d4880a;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff">C</div>
-        <span style="font-size:22px;color:#fff;font-family:'Instrument Serif',serif">ComplianceOS</span>
+        <div style="width:38px;height:38px;background:#d4880a;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;color:#fff">C</div>
+        <span style="font-size:23px;color:#fff;font-family:Instrument Serif,serif">ComplianceOS</span>
       </div>
-      <div style="font-size:13px;color:rgba(255,255,255,.35)">La compliance E&amp;C, enfin opérationnelle.</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.4)">La compliance E&amp;C, enfin opérationnelle.</div>
     </div>
-    <!-- Card -->
-    <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px">
-      <!-- Tabs Sign In / Sign Up -->
+
+    <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:26px">
+
+      <!-- TABS -->
       <div style="display:flex;gap:4px;background:rgba(0,0,0,.25);border-radius:9px;padding:4px;margin-bottom:20px">
-        <button id="cos-tab-signin" onclick="cosAuthTab('signin')" style="flex:1;padding:9px;background:rgba(255,255,255,.1);border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Se connecter</button>
-        <button id="cos-tab-signup" onclick="cosAuthTab('signup')" style="flex:1;padding:9px;background:transparent;border:none;border-radius:6px;color:rgba(255,255,255,.5);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Créer un compte</button>
+        <button id="tab-signin" onclick="authTab('signin')" style="flex:1;padding:9px;background:rgba(255,255,255,.1);border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Se connecter</button>
+        <button id="tab-signup" onclick="authTab('signup')" style="flex:1;padding:9px;background:transparent;border:none;border-radius:6px;color:rgba(255,255,255,.5);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Créer un compte</button>
       </div>
-      <!-- FORM SIGN IN -->
-      <div id="cos-form-signin">
-        <div style="font-size:21px;color:#fff;margin-bottom:4px;font-family:'Instrument Serif',serif">Bienvenue</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">Connectez-vous à votre espace.</div>
-        <label style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.5);display:block;margin-bottom:5px">EMAIL</label>
-        <input id="cos-signin-email" type="email" autocomplete="email" placeholder="prenom.nom@entreprise.fr"
-          onkeydown="if(event.key==='Enter')document.getElementById('cos-signin-pwd').focus()"
-          style="width:100%;padding:11px 13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:11px;font-family:inherit">
-        <label style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.5);display:block;margin-bottom:5px">MOT DE PASSE</label>
-        <input id="cos-signin-pwd" type="password" autocomplete="current-password" placeholder="••••••••"
-          onkeydown="if(event.key==='Enter')cosSignIn()"
-          style="width:100%;padding:11px 13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:6px;font-family:inherit">
-        <div style="text-align:right;margin-bottom:14px">
-          <a href="javascript:void(0)" onclick="cosForgotPassword()" style="font-size:11px;color:rgba(212,136,10,.8);text-decoration:none">Mot de passe oublié ?</a>
-        </div>
-        <div id="cos-signin-err" style="font-size:12px;color:#fca5a5;margin-bottom:10px;display:none;padding:8px 10px;background:rgba(252,165,165,.1);border-radius:6px"></div>
-        <button id="cos-signin-btn" onclick="cosSignIn()" style="width:100%;padding:13px;background:#d4880a;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Se connecter</button>
-        <div style="text-align:center;margin-top:14px">
-          <a href="javascript:void(0)" onclick="cosAuthTab('signup')" style="font-size:12px;color:rgba(255,255,255,.5);text-decoration:none">Pas encore de compte ? <span style="color:#d4880a;font-weight:600">Créer un compte</span></a>
+
+      <!-- FORM SIGNIN -->
+      <div id="form-signin">
+        <div style="font-size:20px;color:#fff;margin-bottom:16px;font-family:Instrument Serif,serif">Bienvenue</div>
+
+        <label class="lbl">EMAIL</label>
+        <input id="si-email" type="email" autocomplete="email" placeholder="email@entreprise.com" class="inp" onkeydown="if(event.key==='Enter')document.getElementById('si-pwd').focus()">
+
+        <label class="lbl">MOT DE PASSE</label>
+        <input id="si-pwd" type="password" autocomplete="current-password" placeholder="••••••••" class="inp" onkeydown="if(event.key==='Enter')doSignIn()">
+
+        <div id="si-err" class="err"></div>
+        <button id="si-btn" onclick="doSignIn()" class="btn">Se connecter</button>
+
+        <div style="text-align:center;margin-top:12px">
+          <a href="javascript:void(0)" onclick="authTab('signup')" style="font-size:12px;color:rgba(255,255,255,.5)">Pas de compte ? <span style="color:#d4880a;font-weight:600">Créer un compte</span></a>
         </div>
       </div>
-      <!-- FORM SIGN UP -->
-      <div id="cos-form-signup" style="display:none">
-        <div style="font-size:21px;color:#fff;margin-bottom:4px;font-family:'Instrument Serif',serif">Créer votre compte</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">Moins de 2 minutes pour commencer.</div>
-        <label style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.5);display:block;margin-bottom:5px">EMAIL PROFESSIONNEL</label>
-        <input id="cos-signup-email" type="email" autocomplete="email" placeholder="prenom.nom@entreprise.fr"
-          onkeydown="if(event.key==='Enter')document.getElementById('cos-signup-pwd').focus()"
-          style="width:100%;padding:11px 13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:11px;font-family:inherit">
-        <label style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.5);display:block;margin-bottom:5px">MOT DE PASSE <span style="font-weight:400;opacity:.6">(8 caractères min.)</span></label>
-        <input id="cos-signup-pwd" type="password" autocomplete="new-password" placeholder="••••••••"
-          onkeydown="if(event.key==='Enter')cosSignUp()"
-          style="width:100%;padding:11px 13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:14px;font-family:inherit">
-        <div id="cos-signup-err" style="font-size:12px;color:#fca5a5;margin-bottom:10px;display:none;padding:8px 10px;background:rgba(252,165,165,.1);border-radius:6px"></div>
-        <button id="cos-signup-btn" onclick="cosSignUp()" style="width:100%;padding:13px;background:#d4880a;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Créer mon compte</button>
-        <div style="text-align:center;margin-top:14px">
-          <a href="javascript:void(0)" onclick="cosAuthTab('signin')" style="font-size:12px;color:rgba(255,255,255,.5);text-decoration:none">Déjà un compte ? <span style="color:#d4880a;font-weight:600">Se connecter</span></a>
+
+      <!-- FORM SIGNUP -->
+      <div id="form-signup" style="display:none">
+        <div style="font-size:20px;color:#fff;margin-bottom:16px;font-family:Instrument Serif,serif">Créer votre compte</div>
+
+        <label class="lbl">NOM COMPLET</label>
+        <input id="su-nom" type="text" placeholder="Jean Dupont" class="inp">
+
+        <label class="lbl">EMAIL</label>
+        <input id="su-email" type="email" autocomplete="email" placeholder="email@entreprise.com" class="inp">
+
+        <label class="lbl">MOT DE PASSE <span style="font-weight:400;opacity:.5">(8 caractères min.)</span></label>
+        <input id="su-pwd" type="password" autocomplete="new-password" placeholder="••••••••" class="inp">
+
+        <label class="lbl">VOTRE RÔLE</label>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
+          <label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer" onclick="selectRole('CCO', this)" id="role-CCO">
+            <input type="radio" name="role" value="CCO" style="margin:0">
+            <span style="font-size:13px;color:#fff;font-weight:600">CCO / Responsable Compliance</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer" onclick="selectRole('fournisseur', this)" id="role-fournisseur">
+            <input type="radio" name="role" value="fournisseur" style="margin:0">
+            <span style="font-size:13px;color:#fff;font-weight:600">Fournisseur</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer" onclick="selectRole('collaborateur', this)" id="role-collaborateur">
+            <input type="radio" name="role" value="collaborateur" style="margin:0">
+            <span style="font-size:13px;color:#fff;font-weight:600">Collaborateur</span>
+          </label>
         </div>
-        <div style="font-size:10px;color:rgba(255,255,255,.3);text-align:center;margin-top:18px;line-height:1.5">
-          En créant un compte, vous acceptez nos conditions d'utilisation.<br>Vos données restent strictement confidentielles.
+
+        <div id="su-err" class="err"></div>
+        <button id="su-btn" onclick="doSignUp()" class="btn">Créer mon compte</button>
+
+        <div style="text-align:center;margin-top:12px">
+          <a href="javascript:void(0)" onclick="authTab('signin')" style="font-size:12px;color:rgba(255,255,255,.5)">Déjà un compte ? <span style="color:#d4880a;font-weight:600">Se connecter</span></a>
         </div>
       </div>
-      <!-- CLOSE (retour landing) -->
-      <div style="text-align:center;margin-top:20px">
-        <a href="javascript:void(0)" onclick="cosCloseLogin()" style="font-size:11px;color:rgba(255,255,255,.3);text-decoration:none">← Retour à l'accueil</a>
+
+      <div style="text-align:center;margin-top:16px">
+        <a href="javascript:void(0)" onclick="closeOverlay()" style="font-size:11px;color:rgba(255,255,255,.3)">← Retour à l'accueil</a>
       </div>
     </div>
+
   </div>
+
+  <style>
+    #cos-ov .lbl { font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.5);display:block;margin-bottom:5px; }
+    #cos-ov .inp { width:100%;padding:11px 13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:13px;font-family:inherit; }
+    #cos-ov .inp:focus { border-color:#d4880a; }
+    #cos-ov .btn { width:100%;padding:13px;background:#d4880a;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit; }
+    #cos-ov .btn:disabled { opacity:.5;cursor:not-allowed; }
+    #cos-ov .err { font-size:12px;color:#fca5a5;margin-bottom:10px;display:none;padding:8px 10px;background:rgba(252,165,165,.1);border-radius:6px; }
+    #cos-ov label[id^="role-"].selected { border-color:#d4880a !important;background:rgba(212,136,10,.1) !important; }
+  </style>
 </div>
-<div id="cos-ob" style="position:fixed;inset:0;background:#0f1a2e;z-index:99998;display:none;align-items:center;justify-content:center;padding:20px"><div style="width:100%;max-width:460px"><div style="text-align:center;margin-bottom:24px"><div style="display:inline-flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#d4880a;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff">C</div><span style="font-size:20px;color:#fff;font-family:'Instrument Serif',serif">ComplianceOS</span></div></div><div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px"><div style="font-size:20px;color:#fff;margin-bottom:4px;font-family:'Instrument Serif',serif">Bienvenue !</div><div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:20px">Configurez votre espace en 30 secondes.</div><label style="font-size:10px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.35);display:block;margin-bottom:5px">NOM COMPLET</label><input id="ob-nom" type="text" placeholder="Prénom NOM" style="width:100%;padding:11px 13px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:12px"><label style="font-size:10px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.35);display:block;margin-bottom:5px">ENTREPRISE</label><input id="ob-company" type="text" placeholder="Nom de votre entreprise" style="width:100%;padding:11px 13px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:12px"><label style="font-size:10px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.35);display:block;margin-bottom:8px">VOTRE RÔLE</label><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:20px"><label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer"><input type="radio" name="ob-role" value="CCO" checked style="accent-color:#d4880a"><div><div style="font-size:13px;color:#fff;font-weight:600">Responsable Compliance / CCO</div><div style="font-size:11px;color:rgba(255,255,255,.35)">Accès plateforme pilotage</div></div></label><label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer"><input type="radio" name="ob-role" value="fournisseur" style="accent-color:#d4880a"><div><div style="font-size:13px;color:#fff;font-weight:600">Fournisseur</div><div style="font-size:11px;color:rgba(255,255,255,.35)">Accès Passeport Compliance</div></div></label><label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer"><input type="radio" name="ob-role" value="collaborateur" style="accent-color:#d4880a"><div><div style="font-size:13px;color:#fff;font-weight:600">Collaborateur</div><div style="font-size:11px;color:rgba(255,255,255,.35)">Espace déclarations</div></div></label></div><div id="ob-err" style="font-size:12px;color:#fca5a5;margin-bottom:10px;display:none"></div><button onclick="authOnboard()" style="width:100%;padding:13px;background:#d4880a;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Accéder à ma plateforme &rarr;</button></div></div></div>
 <!-- ============================================================
      LANDING PAGE
      ============================================================ -->
@@ -15328,8 +15351,8 @@ W.cosN=function(id){var ta=document.getElementById("cos-n-"+id);if(!ta)return;ns
 // ================================================================
 // AUTH MODULE
 // ================================================================
-document.addEventListener("DOMContentLoaded", function() { /* v9 bootstrap handles auth */ });
-function cosOnAuth(user) { if (window.cosOnAuthV9) window.cosOnAuthV9(user); else setTimeout(function(){cosOnAuth(user);}, 100); }
+document.addEventListener("DOMContentLoaded", function() { /* v10 bootstrap handles this */ });
+function cosOnAuth(user) { /* v10 handles auth */ }
 function cosRoute(p) {
   var ov=document.getElementById("cos-ov"),ob=document.getElementById("cos-ob");
   if(ov)ov.style.display="none"; if(ob)ob.style.display="none";
@@ -15344,14 +15367,9 @@ function authSendLink() {
   if (typeof cosAuthTab === 'function') cosAuthTab('signin');
   else if (typeof cosOpenLogin === 'function') cosOpenLogin();
 }
-function authReset() {
-  var fm=document.getElementById("cos-form"),sent=document.getElementById("cos-sent"),ld=document.getElementById("cos-loading");
-  var ei=document.getElementById("cos-email"),btn=document.getElementById("cos-btn");
-  if(fm)fm.style.display="block"; if(sent)sent.style.display="none"; if(ld)ld.style.display="none";
-  if(ei)ei.value=""; if(btn){btn.textContent="Recevoir mon lien \u2192";btn.disabled=false;btn.style.opacity="1";}
-}
-function authOnboard() { if (window.authOnboardV9) window.authOnboardV9(); }
-function authSignOut() { if (window.authSignOutV9) window.authSignOutV9(); }
+function authReset() { /* v10 handles */ }
+function authOnboard() { /* v10 handles */ }
+function authSignOut() { if (window.doSignOut) window.doSignOut(); }
 console.log("[COS] Auth + Messagerie \u2713");
 // ================================================================
 // COMPLIANCEOS — SUPABASE DATA SYNC MODULE
@@ -16174,786 +16192,274 @@ function cosDoInvite() {
 
 
 /* ══════════════════════════════════════════════════════════════════════════
-   COMPLIANCEOS v9 — AUTH & DATA MODULE (unique, remplace v6/v7/v8/v8.1/v8.2)
-   ══════════════════════════════════════════════════════════════════════════
-   Ce module :
-   - Gère l'authentification (signup, signin, magic link, onboarding)
-   - Gère les invitations (CCO invite collaborateur/fournisseur)
-   - Gère la persistance (submitCadeau/Conflict/Alert → Supabase)
-   - Gère le Realtime (declarations en direct)
-   - Remplace TOUS les anciens handlers via window.xxx overrides
+   COMPLIANCEOS v10 — AUTH MINIMAL (version simple pour démo)
+   Juste : signup + signin + route vers dashboard par rôle. Rien d'autre.
    ══════════════════════════════════════════════════════════════════════════ */
 (function() {
   'use strict';
 
-  // ── STATE GLOBAL ───────────────────────────────────────────────────────
-  window._COS_V9 = true;
-  window._COS_UID = null;
-  window._COS_CID = null;
-  window._COS_PROFILE = null;
-  window._COS_INVITATION = null;
+  // ── State global ────────────────────────────────────────────────────
+  window._USER = null;
 
-  // ── LOGGER ─────────────────────────────────────────────────────────────
-  function log() { try { console.log.apply(console, ['[v9]'].concat([].slice.call(arguments))); } catch(e){} }
-  function warn() { try { console.warn.apply(console, ['[v9]'].concat([].slice.call(arguments))); } catch(e){} }
-  window.cosLog = log; window.cosWarn = warn;
-
-  // ── TOKEN D'INVITATION URL ─────────────────────────────────────────────
-  function parseInviteToken() {
-    try {
-      var p = new URLSearchParams(window.location.search || '');
-      return p.get('invite') || p.get('inv') || null;
-    } catch(e) { return null; }
-  }
-  var _inviteToken = parseInviteToken();
-  if (_inviteToken) log('Invite token détecté:', _inviteToken);
-
-  // ── DEBUG BAR (pour diagnostiquer visuellement) ────────────────────────
-  function updateDebugBar() {
-    var bar = document.getElementById('cos-debug-v9');
-    if (!bar) {
-      bar = document.createElement('div');
-      bar.id = 'cos-debug-v9';
-      bar.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#0C1B35;color:#D4880A;font-family:monospace;font-size:11px;padding:6px 12px;z-index:99999;display:flex;gap:16px;border-top:1px solid #D4880A;pointer-events:none';
-      if (document.body) document.body.appendChild(bar);
-    }
-    bar.innerHTML = 
-      '<span>v9</span>' +
-      '<span>UID: ' + (window._COS_UID ? window._COS_UID.slice(0,8)+'…' : 'null') + '</span>' +
-      '<span>CID: ' + (window._COS_CID ? window._COS_CID.slice(0,8)+'…' : 'null') + '</span>' +
-      '<span>Role: ' + (window._COS_PROFILE ? window._COS_PROFILE.role : '-') + '</span>';
-  }
-  setInterval(updateDebugBar, 1500);
-
-  // ── HELPERS ────────────────────────────────────────────────────────────
-  function db() { return window.COS_DB; }
+  function log() { try { console.log.apply(console, ['[v10]'].concat([].slice.call(arguments))); } catch(e){} }
   function $(id) { return document.getElementById(id); }
+  function db() { return window.COS_DB; }
 
-  function showErr(msg) {
-    var e = $('ob-err') || $('cos-err');
-    if (e) { e.textContent = msg; e.style.display = 'block'; }
-    if (window.toast) window.toast(msg, 'var(--red)');
-    warn('ERR:', msg);
+  // ── Helpers UI ──────────────────────────────────────────────────────
+  function showErr(id, msg) {
+    var el = $(id); if (el) { el.textContent = msg; el.style.display = 'block'; }
   }
+  function hideErr(id) { var el = $(id); if (el) el.style.display = 'none'; }
+  function setBtn(id, txt, disabled) { var b = $(id); if (b) { b.textContent = txt; b.disabled = !!disabled; } }
 
-  function hideOv()  { var o = $('cos-ov'); if (o) o.style.display = 'none'; }
-  function showOv()  { var o = $('cos-ov'); if (o) o.style.display = 'flex'; var b = $('cos-ob'); if (b) b.style.display = 'none'; }
-  function showOb()  { var o = $('cos-ov'); if (o) o.style.display = 'none'; var b = $('cos-ob'); if (b) b.style.display = 'flex'; }
+  // ── Overlay open/close ──────────────────────────────────────────────
+  window.openOverlay = function(tab) {
+    var ov = $('cos-ov'); if (ov) ov.style.display = 'flex';
+    if (tab) window.authTab(tab);
+  };
+  window.closeOverlay = function() {
+    var ov = $('cos-ov'); if (ov) ov.style.display = 'none';
+  };
 
-  // ══ LOOKUP INVITATION ═══════════════════════════════════════════════════
-  function lookupInvitation(token) {
-    if (!db() || !token) return Promise.resolve(null);
-    return db().from('invitations')
-      .select('id,email,company_id,role,kind,accepted,companies(id,name)')
-      .eq('token', token)
-      .limit(1)
+  // Compatibilité : les anciens onclick appellent cosOpenLogin / cosCloseLogin
+  window.cosOpenLogin = function() { window.openOverlay('signin'); };
+  window.cosCloseLogin = function() { window.closeOverlay(); };
+
+  // ── Tab switcher ────────────────────────────────────────────────────
+  window.authTab = function(tab) {
+    var ts = $('tab-signin'), tu = $('tab-signup');
+    var fs = $('form-signin'), fu = $('form-signup');
+    if (!ts || !tu || !fs || !fu) return;
+    if (tab === 'signup') {
+      tu.style.background = 'rgba(255,255,255,.1)'; tu.style.color = '#fff';
+      ts.style.background = 'transparent';          ts.style.color = 'rgba(255,255,255,.5)';
+      fu.style.display = 'block'; fs.style.display = 'none';
+    } else {
+      ts.style.background = 'rgba(255,255,255,.1)'; ts.style.color = '#fff';
+      tu.style.background = 'transparent';          tu.style.color = 'rgba(255,255,255,.5)';
+      fs.style.display = 'block'; fu.style.display = 'none';
+    }
+    hideErr('si-err'); hideErr('su-err');
+  };
+  window.cosAuthTab = window.authTab;
+
+  // ── Rôle select ─────────────────────────────────────────────────────
+  window.selectRole = function(role, labelEl) {
+    ['CCO','fournisseur','collaborateur'].forEach(function(r) {
+      var el = $('role-' + r);
+      if (el) el.classList.remove('selected');
+    });
+    if (labelEl) labelEl.classList.add('selected');
+    var radio = labelEl ? labelEl.querySelector('input[type="radio"]') : null;
+    if (radio) radio.checked = true;
+  };
+
+  // ── SIGN UP ─────────────────────────────────────────────────────────
+  window.doSignUp = function() {
+    var nom = ($('su-nom').value || '').trim();
+    var email = ($('su-email').value || '').trim().toLowerCase();
+    var pwd = $('su-pwd').value || '';
+    var roleEl = document.querySelector('input[name="role"]:checked');
+    var role = roleEl ? roleEl.value : '';
+
+    hideErr('su-err');
+    if (!nom) return showErr('su-err', 'Nom requis.');
+    if (!email || email.indexOf('@') < 0) return showErr('su-err', 'Email invalide.');
+    if (!pwd || pwd.length < 8) return showErr('su-err', 'Mot de passe : 8 caractères minimum.');
+    if (!role) return showErr('su-err', 'Sélectionnez un rôle.');
+    if (!db()) return showErr('su-err', 'Base de données non initialisée.');
+
+    setBtn('su-btn', 'Création...', true);
+    log('Signup:', email, 'role=' + role);
+
+    db().auth.signUp({
+      email: email,
+      password: pwd,
+      options: { emailRedirectTo: window.location.origin, data: { nom: nom, role: role } }
+    }).then(function(r) {
+      if (r.error) {
+        setBtn('su-btn', 'Créer mon compte', false);
+        var msg = r.error.message;
+        if (msg.indexOf('already registered') >= 0 || msg.indexOf('User already') >= 0) {
+          msg = 'Cet email a déjà un compte. Connectez-vous.';
+        }
+        return showErr('su-err', msg);
+      }
+      if (!r.data || !r.data.user) {
+        setBtn('su-btn', 'Créer mon compte', false);
+        return showErr('su-err', 'Erreur création compte.');
+      }
+      var uid = r.data.user.id;
+
+      // Créer le profil
+      db().from('profiles').upsert({
+        id: uid, email: email, nom: nom, role: role, onboarded: true
+      }, { onConflict: 'id' }).then(function(pr) {
+        if (pr.error) {
+          log('Erreur profil (non bloquant):', pr.error.message);
+          // On continue même si profil échoue (RLS peut bloquer mais user est créé)
+        }
+
+        // Cas 1 : session immédiate (confirm email désactivé)
+        if (r.data.session) {
+          setBtn('su-btn', '✓', false);
+          window._USER = { id: uid, email: email, nom: nom, role: role };
+          setTimeout(function() { routeToDashboard(role); }, 400);
+          return;
+        }
+
+        // Cas 2 : confirmation email requise
+        setBtn('su-btn', '✓ Compte créé', false);
+        var fu = $('form-signup');
+        if (fu) {
+          fu.innerHTML = '<div style="text-align:center;padding:20px 0">' +
+            '<div style="font-size:38px;margin-bottom:12px">📧</div>' +
+            '<div style="font-size:18px;color:#fff;margin-bottom:8px;font-family:Instrument Serif,serif">Vérifiez votre email</div>' +
+            '<div style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.7;margin-bottom:18px">Un email de confirmation a été envoyé à <b>' + email + '</b>.<br>Cliquez sur le lien pour activer votre compte.</div>' +
+            '<div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:14px;padding:10px;background:rgba(255,255,255,.04);border-radius:8px">⚠ Si vous ne recevez pas l\'email (limite Supabase gratuite), demandez à votre admin de désactiver la confirmation email dans Supabase → Auth.</div>' +
+            '<button onclick="authTab(\'signin\')" style="padding:10px 22px;background:#d4880a;border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Aller à la connexion →</button>' +
+          '</div>';
+        }
+      }).catch(function(e) {
+        log('Exception profil:', e);
+        // On continue quand même
+        if (r.data.session) {
+          window._USER = { id: uid, email: email, nom: nom, role: role };
+          setTimeout(function() { routeToDashboard(role); }, 400);
+        }
+      });
+    }).catch(function(e) {
+      setBtn('su-btn', 'Créer mon compte', false);
+      showErr('su-err', 'Erreur : ' + (e.message || e));
+    });
+  };
+  window.cosSignUp = window.doSignUp;
+
+  // ── SIGN IN ─────────────────────────────────────────────────────────
+  window.doSignIn = function() {
+    var email = ($('si-email').value || '').trim().toLowerCase();
+    var pwd = $('si-pwd').value || '';
+
+    hideErr('si-err');
+    if (!email || email.indexOf('@') < 0) return showErr('si-err', 'Email invalide.');
+    if (!pwd) return showErr('si-err', 'Mot de passe requis.');
+    if (!db()) return showErr('si-err', 'Base de données non initialisée.');
+
+    setBtn('si-btn', 'Connexion...', true);
+    log('Signin:', email);
+
+    db().auth.signInWithPassword({ email: email, password: pwd })
       .then(function(r) {
-        if (r.error) { warn('inv lookup err:', r.error.message); return null; }
-        return (r.data && r.data[0]) || null;
+        if (r.error) {
+          setBtn('si-btn', 'Se connecter', false);
+          var msg = r.error.message;
+          if (msg.indexOf('Invalid login') >= 0) msg = 'Email ou mot de passe incorrect.';
+          if (msg.indexOf('Email not confirmed') >= 0) msg = 'Email non confirmé. Vérifiez votre boîte mail.';
+          return showErr('si-err', msg);
+        }
+        if (!r.data || !r.data.user) {
+          setBtn('si-btn', 'Se connecter', false);
+          return showErr('si-err', 'Erreur connexion.');
+        }
+
+        log('Connecté:', r.data.user.email);
+        fetchProfileAndRoute(r.data.user);
+      }).catch(function(e) {
+        setBtn('si-btn', 'Se connecter', false);
+        showErr('si-err', 'Erreur : ' + (e.message || e));
+      });
+  };
+  window.cosSignIn = window.doSignIn;
+
+  // ── Récupérer profil + router vers dashboard ─────────────────────────
+  function fetchProfileAndRoute(user) {
+    db().from('profiles').select('*').eq('id', user.id).single()
+      .then(function(r) {
+        var role = 'CCO'; // fallback par défaut
+        var nom = user.email.split('@')[0];
+
+        if (r.data) {
+          role = r.data.role || 'CCO';
+          nom = r.data.nom || nom;
+          log('Profil trouvé: role=' + role);
+        } else {
+          log('Pas de profil — fallback role=CCO');
+        }
+
+        window._USER = { id: user.id, email: user.email, nom: nom, role: role };
+        setBtn('si-btn', '✓', false);
+        setTimeout(function() { routeToDashboard(role); }, 400);
+      }).catch(function(e) {
+        log('Erreur profil:', e);
+        // Fallback : router quand même
+        window._USER = { id: user.id, email: user.email, nom: '', role: 'CCO' };
+        setTimeout(function() { routeToDashboard('CCO'); }, 400);
       });
   }
 
-  // Appliquer l'invitation à l'écran onboarding (pré-remplir + verrouiller)
-  function applyInvitation(inv) {
-    if (!inv) return;
-    window._COS_INVITATION = inv;
-    var companyInput = $('ob-company');
-    if (companyInput && inv.companies && inv.companies.name) {
-      companyInput.value = inv.companies.name;
-      companyInput.disabled = true;
-      companyInput.style.opacity = '0.6';
-    }
-    var desiredRole = inv.kind === 'supplier' ? 'fournisseur' : (inv.role || 'Collaborateur').toLowerCase();
-    var radios = document.querySelectorAll('input[name="ob-role"]');
-    Array.prototype.forEach.call(radios, function(r) {
-      if (r.value.toLowerCase() === desiredRole) r.checked = true;
-      r.disabled = true;
-    });
-    // Bandeau info
-    var banner = $('ob-banner-v9');
-    if (!banner) {
-      banner = document.createElement('div');
-      banner.id = 'ob-banner-v9';
-      banner.style.cssText = 'background:linear-gradient(90deg,rgba(212,136,10,.15),rgba(212,136,10,.05));border:1px solid rgba(212,136,10,.4);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#d4880a';
-      banner.innerHTML = '<b>✉ INVITATION DÉTECTÉE</b><br>' +
-        'Entreprise : <b>' + (inv.companies ? inv.companies.name : 'inconnue') + '</b><br>' +
-        'Rôle : <b>' + (inv.role || 'Collaborateur') + '</b>';
-      var ob = $('cos-ob');
-      var firstChild = ob && ob.firstElementChild;
-      if (firstChild) firstChild.insertBefore(banner, firstChild.firstChild);
+  // ── Router vers le bon dashboard ────────────────────────────────────
+  function routeToDashboard(role) {
+    closeOverlay();
+    log('Route vers:', role);
+    var r = (role || 'CCO').toLowerCase();
+    if (r === 'fournisseur') {
+      if (typeof window.enterSupplier === 'function') window.enterSupplier();
+      else if (typeof window.showSc === 'function') window.showSc('supplier');
+    } else if (r === 'collaborateur' || r === 'collab') {
+      if (typeof window.showSc === 'function') window.showSc('collab');
+    } else {
+      if (typeof window.enterCCO === 'function') window.enterCCO();
+      else if (typeof window.showSc === 'function') window.showSc('cco');
     }
   }
 
-  // ══ AUTH : cosOnAuthV9 (handler unique) ═════════════════════════════════
-  window.cosOnAuthV9 = function(user) {
-    hideOv();
-    window._COS_UID = user.id;
-    log('onAuth:', user.email, 'uid=' + user.id.slice(0,8));
-
-    db().from('profiles').select('*').eq('id', user.id).single()
-      .then(function(res) {
-        var p = res.data;
-        // CAS 1 : profil complet → dashboard
-        if (p && p.onboarded && p.company_id) {
-          window._COS_PROFILE = p;
-          window._COS_CID = p.company_id;
-          log('Profile OK, CID=' + p.company_id.slice(0,8), 'role=' + p.role);
-          // Initier sync selon rôle
-          var role = (p.role || '').toLowerCase();
-          if (role !== 'fournisseur') {
-            setTimeout(function() {
-              if (window.cosLoadDeclarationsV9) window.cosLoadDeclarationsV9();
-              if (window.cosStartRealtimeV9) window.cosStartRealtimeV9();
-            }, 600);
-          }
-          if (typeof window.cosRoute === 'function') window.cosRoute(p);
-          return;
-        }
-        // CAS 2 : pas de profil ou incomplet → onboarding
-        if (_inviteToken) {
-          lookupInvitation(_inviteToken).then(function(inv) {
-            if (inv && inv.email && inv.email.toLowerCase() === user.email.toLowerCase() && !inv.accepted) {
-              applyInvitation(inv);
-            } else if (inv) {
-              warn('Invitation pour autre email:', inv.email, 'vs', user.email);
-            }
-            showOb();
-          });
-        } else {
-          showOb();
-        }
-      })
-      .catch(function(e) { warn('cosOnAuth err:', e); showOb(); });
-  };
-
-  // ══ AUTH : authOnboardV9 (création profil + entreprise) ═════════════════
-  window.authOnboardV9 = function() {
-    var nom = ($('ob-nom') && $('ob-nom').value || '').trim();
-    var company = ($('ob-company') && $('ob-company').value || '').trim();
-    var roleInput = document.querySelector('input[name="ob-role"]:checked');
-    var role = roleInput ? roleInput.value : 'CCO';
-
-    if (!nom) { showErr('Nom complet requis.'); return; }
-
-    db().auth.getSession().then(function(r) {
-      var s = r && r.data && r.data.session;
-      if (!s) { warn('Pas de session'); return; }
-      var uid = s.user.id, email = s.user.email;
-      log('Onboard:', email, 'role=' + role);
-
-      var invitation = window._COS_INVITATION;
-
-      // CAS 1 : avec invitation valide
-      if (invitation && invitation.company_id && invitation.email.toLowerCase() === email.toLowerCase()) {
-        log('→ Via invitation CID=' + invitation.company_id.slice(0,8));
-        db().from('profiles').upsert({
-          id: uid, company_id: invitation.company_id, email: email, nom: nom,
-          role: invitation.role || role, onboarded: true
-        }, { onConflict: 'id' }).then(function(pr) {
-          if (pr.error) return showErr('Erreur profil: ' + pr.error.message);
-          // Marquer invitation acceptée
-          db().from('invitations').update({ accepted: true }).eq('id', invitation.id).then(function(){});
-          window._COS_CID = invitation.company_id;
-          window._COS_PROFILE = { nom: nom, role: invitation.role || role, email: email, company_id: invitation.company_id };
-          if (window.toast) window.toast('✓ Bienvenue dans ' + (invitation.companies ? invitation.companies.name : 'votre espace'), 'var(--green)');
-          setTimeout(function() {
-            if (window.cosLoadDeclarationsV9) window.cosLoadDeclarationsV9();
-            if (window.cosStartRealtimeV9) window.cosStartRealtimeV9();
-          }, 600);
-          if (typeof window.cosRoute === 'function') window.cosRoute({ role: invitation.role || role, email: email });
-          // Clean URL
-          if (window.history) window.history.replaceState({}, '', window.location.pathname);
-        });
-        return;
-      }
-
-      // CAS 2 : rôle CCO → créer entreprise
-      if (role === 'CCO') {
-        if (!company) return showErr("Nom d'entreprise requis.");
-        log('→ Création entreprise "' + company + '"');
-        db().from('companies').insert({ name: company, plan: 'decouverte', country: 'FR' })
-          .select().single()
-          .then(function(cr) {
-            if (cr.error) return showErr('Erreur entreprise: ' + cr.error.message);
-            var cid = cr.data.id;
-            log('Company créée CID=' + cid.slice(0,8));
-            db().from('profiles').upsert({
-              id: uid, company_id: cid, email: email, nom: nom, role: 'CCO', onboarded: true
-            }, { onConflict: 'id' }).then(function(pr) {
-              if (pr.error) return showErr('Erreur profil: ' + pr.error.message);
-              window._COS_CID = cid;
-              window._COS_PROFILE = { nom: nom, role: 'CCO', email: email, company_id: cid };
-              if (window.toast) window.toast('✓ Entreprise créée', 'var(--green)');
-              setTimeout(function() {
-                if (window.cosLoadDeclarationsV9) window.cosLoadDeclarationsV9();
-                if (window.cosStartRealtimeV9) window.cosStartRealtimeV9();
-              }, 600);
-              if (typeof window.cosRoute === 'function') window.cosRoute({ role: 'CCO', email: email });
-            });
-          });
-        return;
-      }
-
-      // CAS 3 : rôle Fournisseur (sans invitation) → supplier_account global
-      if (role === 'fournisseur') {
-        log('→ Création compte fournisseur');
-        db().from('profiles').upsert({
-          id: uid, email: email, nom: nom, role: 'fournisseur', onboarded: true
-        }, { onConflict: 'id' }).then(function(pr) {
-          if (pr.error) return showErr('Erreur: ' + pr.error.message);
-          db().from('supplier_accounts').upsert({
-            user_id: uid, email: email, contact_nom: nom
-          }, { onConflict: 'user_id' }).then(function(){
-            window._COS_PROFILE = { nom: nom, role: 'fournisseur', email: email };
-            if (window.toast) window.toast('✓ Compte fournisseur créé', 'var(--green)');
-            if (typeof window.cosRoute === 'function') window.cosRoute({ role: 'fournisseur', email: email });
-          });
-        });
-        return;
-      }
-
-      // CAS 4 : Collaborateur sans invitation → BLOQUÉ
-      if (role === 'collaborateur' || role === 'Collaborateur') {
-        showErr('Inscription bloquée. Les collaborateurs doivent être invités par leur CCO. Demandez un lien d\'invitation.');
-        return;
-      }
-
-      showErr('Rôle non reconnu: ' + role);
-    });
-  };
-
-  // ══ SIGN OUT ════════════════════════════════════════════════════════════
-  window.authSignOutV9 = function() {
-    if (!db()) return;
-    db().auth.signOut().then(function(){
-      window._COS_UID = null; window._COS_CID = null; window._COS_PROFILE = null;
+  // ── SIGN OUT ─────────────────────────────────────────────────────────
+  window.doSignOut = function() {
+    if (!db()) { location.reload(); return; }
+    db().auth.signOut().then(function() {
+      window._USER = null;
       location.reload();
     });
   };
+  window.authSignOut = window.doSignOut;
 
-  // ══ MAGIC LINK / SIGNUP / SIGNIN ════════════════════════════════════════
-  window.authMagicLinkV9 = function(email) {
-    email = (email || ($('cos-email') && $('cos-email').value) || '').trim();
-    if (!email || email.indexOf('@') < 0) { showErr('Email invalide'); return; }
-    db().auth.signInWithOtp({
-      email: email,
-      options: { emailRedirectTo: window.location.origin + window.location.pathname }
-    }).then(function(r) {
-      if (r.error) return showErr(r.error.message);
-      if (window.toast) window.toast('✓ Lien envoyé à ' + email, 'var(--green)');
-    });
-  };
-
-  // ══ SUBMISSIONS : cadeau / conflit / alerte (persistance Supabase) ═════
-  window.submitCadeauV9 = function() {
-    var type = ($('cad-type') && $('cad-type').value || '').trim();
-    var val = parseFloat(($('cad-val') && $('cad-val').value) || 0) || 0;
-    var desc = ($('cad-desc') && $('cad-desc').value || '').trim();
-    var contr = ($('cad-contrepartie') && $('cad-contrepartie').value || $('cad-cont') && $('cad-cont').value || '').trim();
-    if (!type || !val || !desc) {
-      if (window.toast) window.toast('Champs obligatoires', 'var(--amber)');
-      return;
-    }
-    if (!db() || !window._COS_CID) {
-      if (window.toast) window.toast('Non connecté', 'var(--red)');
-      warn('submitCadeau: CID=null');
-      return;
-    }
-    var risk = val > 150 ? 'high' : val > 80 ? 'medium' : 'low';
-    var nom = window._COS_PROFILE ? window._COS_PROFILE.nom : null;
-    db().auth.getSession().then(function(r) {
-      var s = r && r.data && r.data.session;
-      var eml = s ? s.user.email : null;
-      return db().from('declarations').insert({
-        company_id: window._COS_CID,
-        type: 'cadeau', subtype: type,
-        declarant_name: nom || eml, declarant_email: eml,
-        risk: risk, status: val > 150 ? 'pending' : 'auto_approved',
-        data: { type: type, valeur: val, desc: desc, contrepartie: contr }
-      });
-    }).then(function(res) {
-      log('submitCadeau:', res.error ? 'ERR '+res.error.message : 'OK');
-      if (res.error) { if (window.toast) window.toast('Erreur: ' + res.error.message, 'var(--red)'); return; }
-      ['cad-type','cad-val','cad-desc','cad-contrepartie','cad-cont'].forEach(function(i){ if($(i)) $(i).value=''; });
-      if (window.toast) window.toast(val > 150 ? '⚠ Transmis au CCO' : '✓ Enregistré', 'var(--green)');
-    });
-  };
-
-  window.submitConflictV9 = function() {
-    var type = ($('cfl-type') && $('cfl-type').value || '').trim();
-    var desc = ($('cfl-desc') && $('cfl-desc').value || '').trim();
-    if (!type || !desc) { if (window.toast) window.toast('Complétez les champs', 'var(--amber)'); return; }
-    if (!db() || !window._COS_CID) { if (window.toast) window.toast('Non connecté', 'var(--red)'); return; }
-    var nom = window._COS_PROFILE ? window._COS_PROFILE.nom : null;
-    db().auth.getSession().then(function(r) {
-      var s = r && r.data && r.data.session;
-      return db().from('declarations').insert({
-        company_id: window._COS_CID, type: 'conflit', subtype: type,
-        declarant_name: nom || (s ? s.user.email : null),
-        declarant_email: s ? s.user.email : null,
-        risk: 'medium', status: 'active',
-        data: { type: type, desc: desc }
-      });
-    }).then(function(res) {
-      if (res.error) { if (window.toast) window.toast('Erreur: ' + res.error.message, 'var(--red)'); return; }
-      ['cfl-type','cfl-desc'].forEach(function(i){ if($(i)) $(i).value=''; });
-      if (window.toast) window.toast('✓ Conflit enregistré', 'var(--green)');
-    });
-  };
-
-  window.submitAlertV9 = function() {
-    var desc = ($('alr-desc') && $('alr-desc').value || '').trim();
-    var anon = $('alr-anon') && $('alr-anon').checked || false;
-    var cat = ($('alr-cat') && $('alr-cat').value) || ($('alr-category') && $('alr-category').value) || 'Signalement';
-    if (!desc) { if (window.toast) window.toast('Décrivez la situation', 'var(--amber)'); return; }
-    if (!db() || !window._COS_CID) { if (window.toast) window.toast('Non connecté', 'var(--red)'); return; }
-    var ref = 'ALR-' + Date.now().toString(36).toUpperCase().slice(0,6);
-    var nom = anon ? null : (window._COS_PROFILE ? window._COS_PROFILE.nom : null);
-    db().auth.getSession().then(function(r) {
-      var s = r && r.data && r.data.session;
-      return db().from('declarations').insert({
-        company_id: window._COS_CID, type: 'alerte', subtype: cat,
-        declarant_name: nom, declarant_email: anon ? null : (s ? s.user.email : null),
-        risk: 'high', status: 'active',
-        data: { desc: desc, category: cat, anon: anon, ref: ref }
-      });
-    }).then(function(res) {
-      if (res.error) { if (window.toast) window.toast('Erreur: ' + res.error.message, 'var(--red)'); return; }
-      if ($('alr-desc')) $('alr-desc').value = '';
-      if (window.toast) window.toast('✓ Signalement ' + ref + (anon ? ' (anonyme)' : ''), 'var(--green)');
-    });
-  };
-
-  // ══ LOAD DECLARATIONS (CCO dashboard) ═══════════════════════════════════
-  window.cosLoadDeclarationsV9 = function() {
-    if (!db() || !window._COS_CID) { warn('loadDecl: pas de CID'); return; }
-    db().from('declarations').select('*').eq('company_id', window._COS_CID).order('created_at', { ascending: false })
-      .then(function(res) {
-        if (res.error) { warn('loadDecl err:', res.error.message); return; }
-        var items = res.data || [];
-        log('Déclarations chargées:', items.length);
-        items.forEach(function(d) {
-          var dat = d.data || {};
-          if (d.type === 'cadeau' && typeof window.CADEAUX_DATA !== 'undefined') {
-            if (!window.CADEAUX_DATA.some(function(x){return x.id===d.id;})) {
-              window.CADEAUX_DATA.unshift({
-                id: d.id, declarant: d.declarant_name || 'Collaborateur',
-                bu: '—', type: dat.type || 'Reçu', desc: dat.desc || '',
-                valeur: dat.valeur || 0, date: (d.created_at||'').slice(0,10),
-                contrepartie: dat.contrepartie || '',
-                status: d.status === 'pending' ? 'review' : (d.status || 'ok'),
-                risk: d.risk || 'medium'
-              });
-            }
-          }
-          if (d.type === 'conflit' && typeof window.CONFLITS_DATA !== 'undefined') {
-            if (!window.CONFLITS_DATA.some(function(x){return x.id===d.id;})) {
-              window.CONFLITS_DATA.unshift({
-                id: d.id, declarant: d.declarant_name || 'Collaborateur',
-                bu: '—', role: 'Collaborateur', desc: dat.desc || '',
-                date: (d.created_at||'').slice(0,10), status: d.status || 'active',
-                plan: 'En attente', risk: d.risk || 'medium'
-              });
-            }
-          }
-          if (d.type === 'alerte' && typeof window.ALERTES_DATA !== 'undefined') {
-            if (!window.ALERTES_DATA.some(function(x){return x.id===d.id;})) {
-              window.ALERTES_DATA.unshift({
-                id: d.id, ref: dat.ref || 'ALR-'+d.id.slice(0,8),
-                category: dat.category || 'Signalement', desc: dat.desc || '',
-                date: (d.created_at||'').slice(0,10), status: d.status || 'active',
-                days: 0, maxDays: 90, assignee: 'CCO',
-                risk: d.risk || 'high', anon: dat.anon || false,
-                source_type: 'interne', source_role: d.declarant_name ? 'Collaborateur' : 'Anonyme',
-                facts: dat.desc || ''
-              });
-            }
-          }
-        });
-        // Redéclencher les renderers
-        if (typeof window.CCO_RENDERERS !== 'undefined') {
-          ['cadeaux','conflits','alertes-pro','dashboard'].forEach(function(k) {
-            if (window.CCO_RENDERERS[k]) { try { window.CCO_RENDERERS[k](); } catch(e){ warn('render '+k, e); } }
-          });
-        }
-      });
-  };
-
-  // ══ REALTIME ════════════════════════════════════════════════════════════
-  window.cosStartRealtimeV9 = function() {
-    if (!db() || !window._COS_CID) return;
-    var cid = window._COS_CID;
-    log('Realtime: subscribe à company_id=' + cid.slice(0,8));
-    db().channel('cos-v9-' + cid.slice(0,8))
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'declarations',
-        filter: 'company_id=eq.' + cid
-      }, function(payload) {
-        var d = payload.new;
-        if (!d) return;
-        log('Realtime INSERT:', d.type, 'de', d.declarant_name);
-        if (window.toast) window.toast('🔔 Nouvelle ' + d.type + ' de ' + (d.declarant_name || 'Collaborateur'), 'var(--navy)');
-        if (window.cosLoadDeclarationsV9) window.cosLoadDeclarationsV9();
-      })
-      .subscribe(function(s) { log('Realtime status:', s); });
-  };
-
-  // ══ INVITATIONS CCO ═════════════════════════════════════════════════════
-  window.cosInviteUserV9 = function(email, role, kind) {
-    kind = kind || 'employee';
-    role = role || (kind === 'supplier' ? 'fournisseur' : 'Collaborateur');
-    if (!window._COS_CID) { if(window.toast) window.toast('Non connecté', 'var(--red)'); return Promise.reject('no cid'); }
-    if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-      if(window.toast) window.toast('Email invalide', 'var(--amber)'); return Promise.reject('invalid');
-    }
-    var token = 'inv_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,10);
-    return fetch('/.netlify/functions/invite', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        email: email.toLowerCase().trim(), company_id: window._COS_CID,
-        role: role, kind: kind, invited_by: window._COS_UID, fallback_token: token
-      })
-    }).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-      .then(function(d){ if(d.error) throw new Error(d.error); log('Invitation créée:', email); return d; })
-      .catch(function(e){
-        warn('Invite API err:', e, '→ fallback DB');
-        return db().from('invitations').insert({
-          email: email.toLowerCase().trim(), company_id: window._COS_CID,
-          role: role, kind: kind, token: token, invited_by: window._COS_UID, accepted: false
-        }).select().single().then(function(res){
-          if (res.error) throw new Error(res.error.message);
-          var link = window.location.origin + window.location.pathname + '?invite=' + token;
-          return { success: true, token: token, invite_link: link, email_sent: false,
-                   email_error: 'API indisponible, partagez le lien manuellement' };
-        });
-      });
-  };
-
-  window.cosShowInviteModalV9 = function(kind) {
-    kind = kind || 'employee';
-    var existing = $('cos-inv-modal'); if (existing) existing.remove();
-    var m = document.createElement('div');
-    m.id = 'cos-inv-modal';
-    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-    var title = kind === 'supplier' ? 'Inviter un fournisseur' : 'Inviter un collaborateur';
-    var roleSelect = kind === 'employee' ? 
-      '<label style="font-size:10px;font-weight:700;color:#666;letter-spacing:.08em;display:block;margin-bottom:4px">RÔLE</label>' +
-      '<select id="inv-role" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;margin-bottom:12px;box-sizing:border-box">' +
-      '<option value="Collaborateur">Collaborateur</option>' +
-      '<option value="Manager">Manager</option>' +
-      '<option value="Directeur">Directeur</option>' +
-      '<option value="CCO">CCO (co-admin)</option></select>' : '';
-    m.innerHTML = '<div style="background:#fff;border-radius:14px;padding:28px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">' +
-      '<div style="display:flex;justify-content:space-between;margin-bottom:18px">' +
-        '<div style="font-size:17px;font-weight:800;color:#0C1B35">' + title + '</div>' +
-        '<span onclick="document.getElementById(\'cos-inv-modal\').remove()" style="cursor:pointer;font-size:22px;color:#999">×</span></div>' +
-      '<label style="font-size:10px;font-weight:700;color:#666;letter-spacing:.08em;display:block;margin-bottom:4px">EMAIL</label>' +
-      '<input id="inv-email" type="email" placeholder="email@entreprise.com" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;margin-bottom:12px;box-sizing:border-box">' +
-      roleSelect +
-      '<div id="inv-result" style="display:none;padding:12px;border-radius:8px;margin-bottom:12px;font-size:12px"></div>' +
-      '<div style="display:flex;gap:8px;justify-content:flex-end">' +
-        '<button onclick="document.getElementById(\'cos-inv-modal\').remove()" style="padding:9px 14px;background:#f3f4f6;border:none;border-radius:8px;cursor:pointer;font-size:12px">Annuler</button>' +
-        '<button id="inv-send" style="padding:9px 18px;background:#0C1B35;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">Envoyer →</button>' +
-      '</div></div>';
-    document.body.appendChild(m);
-    $('inv-send').onclick = function() {
-      var em = $('inv-email').value.trim();
-      var rl = $('inv-role') ? $('inv-role').value : null;
-      this.disabled = true; this.textContent = 'Envoi...';
-      var self = this;
-      window.cosInviteUserV9(em, rl, kind).then(function(d) {
-        var r = $('inv-result'); r.style.display = 'block';
-        if (d.email_sent) {
-          r.style.background = '#f0fdf4'; r.style.color = '#15803d';
-          r.innerHTML = '<b>✓ Email envoyé</b><br><small>Lien de secours :</small><br>' +
-            '<input readonly value="' + d.invite_link + '" style="width:100%;margin-top:4px;padding:5px;border:1px solid #86efac;border-radius:4px;font-size:10px" onclick="this.select()">';
-        } else {
-          r.style.background = '#fef3c7'; r.style.color = '#92400e';
-          r.innerHTML = '<b>⚠ Email non envoyé</b> (' + (d.email_error||'') + ')<br>Partagez manuellement :<br>' +
-            '<input readonly value="' + d.invite_link + '" style="width:100%;margin-top:4px;padding:5px;border:1px solid #fcd34d;border-radius:4px;font-size:10px" onclick="this.select()">';
-        }
-        self.textContent = '✓ Créé'; self.disabled = false;
-      }).catch(function(e){
-        self.disabled = false; self.textContent = 'Envoyer →';
-        if (window.toast) window.toast('Erreur: ' + e.message, 'var(--red)');
-      });
-    };
-  };
-  window.cosInviteEmployeeV9 = function(){ window.cosShowInviteModalV9('employee'); };
-  window.cosInviteSupplierV9 = function(){ window.cosShowInviteModalV9('supplier'); };
-
-
-  // ══ AUTH UI (login/signup/tab - restauré depuis v8) ════════════════════
-  
-  // Helpers utilisés par cosSignIn / cosSignUp
-  function showErr(id, msg) {
-    var el = document.getElementById(id);
-    if (el) { el.textContent = msg; el.style.display = 'block'; }
-    else { log('showErr:', id, msg); }
-  }
-  function setBtn(id, txt, disabled) {
-    var b = document.getElementById(id);
-    if (b) { b.textContent = txt; b.disabled = !!disabled; }
-  }
-
-
-  window.cosOpenLogin = function(redirectRole) {
-    window._COS_REDIRECT_ROLE = redirectRole || null;
-    var ov = document.getElementById('cos-ov');
-    if (ov) ov.style.display = 'flex';
-  };
-
-  window.cosCloseLogin = function() {
-    var ov = document.getElementById('cos-ov');
-    if (ov) ov.style.display = 'none';
-    if (typeof showSc === 'function') showSc('land');
-  };
-
-  window.cosAuthTab = function(tab) {
-    var tabSignin = document.getElementById('cos-tab-signin');
-    var tabSignup = document.getElementById('cos-tab-signup');
-    var frmSignin = document.getElementById('cos-form-signin');
-    var frmSignup = document.getElementById('cos-form-signup');
-    if (!tabSignin) return;
-    if (tab === 'signup') {
-      tabSignup.style.background = 'rgba(255,255,255,.1)'; tabSignup.style.color = '#fff';
-      tabSignin.style.background = 'transparent';         tabSignin.style.color = 'rgba(255,255,255,.5)';
-      frmSignup.style.display = 'block'; frmSignin.style.display = 'none';
-    } else {
-      tabSignin.style.background = 'rgba(255,255,255,.1)'; tabSignin.style.color = '#fff';
-      tabSignup.style.background = 'transparent';         tabSignup.style.color = 'rgba(255,255,255,.5)';
-      frmSignin.style.display = 'block'; frmSignup.style.display = 'none';
-    }
-    // Reset erreurs
-    var errIn = document.getElementById('cos-signin-err');
-    var errUp = document.getElementById('cos-signup-err');
-    if (errIn) errIn.style.display = 'none';
-    if (errUp) errUp.style.display = 'none';
-  };
-
-  window.cosSignIn = function() {
-    var email = (document.getElementById('cos-signin-email') || {}).value || '';
-    var pwd   = (document.getElementById('cos-signin-pwd')   || {}).value || '';
-    email = email.trim().toLowerCase();
-    if (!email || email.indexOf('@') < 0) return showErr('cos-signin-err', 'Email invalide.');
-    if (!pwd || pwd.length < 6)           return showErr('cos-signin-err', 'Mot de passe requis.');
-    if (!window.COS_DB)                    return showErr('cos-signin-err', 'Erreur init. Rechargez la page.');
-    setBtn('cos-signin-btn', 'Connexion...', true);
-    var errEl = document.getElementById('cos-signin-err');
-    if (errEl) errEl.style.display = 'none';
-    window.COS_DB.auth.signInWithPassword({ email: email, password: pwd })
-      .then(function(res) {
-        if (res.error) {
-          setBtn('cos-signin-btn', 'Se connecter', false);
-          var msg = res.error.message || 'Erreur de connexion';
-          if (msg.indexOf('Invalid login') >= 0) msg = 'Email ou mot de passe incorrect.';
-          if (msg.indexOf('Email not confirmed') >= 0) msg = 'Email non confirmé. Vérifiez votre boîte mail.';
-          return showErr('cos-signin-err', msg);
-        }
-        if (typeof cosDebug === 'function') cosDebug('SignIn OK: ' + email);
-        // La session est maintenant active. cosOnAuth sera déclenché par onAuthStateChange.
-        // On déclenche manuellement au cas où.
-        if (res.data && res.data.user && typeof window.cosOnAuth === 'function') {
-          window.cosOnAuth(res.data.user);
-        }
-      })
-      .catch(function(e) {
-        setBtn('cos-signin-btn', 'Se connecter', false);
-        showErr('cos-signin-err', 'Erreur: ' + (e.message || 'inconnue'));
-      });
-  };
-
-  window.cosSignUp = function() {
-    var email = (document.getElementById('cos-signup-email') || {}).value || '';
-    var pwd   = (document.getElementById('cos-signup-pwd')   || {}).value || '';
-    email = email.trim().toLowerCase();
-    if (!email || email.indexOf('@') < 0) return showErr('cos-signup-err', 'Email invalide.');
-    if (!pwd || pwd.length < 8)           return showErr('cos-signup-err', 'Mot de passe : 8 caractères minimum.');
-    if (!window.COS_DB)                    return showErr('cos-signup-err', 'Erreur init. Rechargez la page.');
-    setBtn('cos-signup-btn', 'Création...', true);
-    var errEl = document.getElementById('cos-signup-err');
-    if (errEl) errEl.style.display = 'none';
-    window.COS_DB.auth.signUp({
-      email: email,
-      password: pwd,
-      options: {
-        emailRedirectTo: window.location.origin
-      }
-    })
-      .then(function(res) {
-        if (res.error) {
-          setBtn('cos-signup-btn', 'Créer mon compte', false);
-          var msg = res.error.message || 'Erreur';
-          if (msg.indexOf('already registered') >= 0 || msg.indexOf('User already') >= 0) {
-            msg = 'Cet email est déjà utilisé. Connectez-vous.';
-          }
-          return showErr('cos-signup-err', msg);
-        }
-        if (typeof cosDebug === 'function') cosDebug('SignUp OK: ' + email);
-        // ── Cas 1 : confirmation email DÉSACTIVÉE dans Supabase → session immédiate
-        if (res.data && res.data.session) {
-          if (typeof cosDebug === 'function') cosDebug('Session directe, redirect onboarding');
-          // Lancer l'onboarding directement
-          setBtn('cos-signup-btn', '✓', true);
-          setTimeout(function() {
-            if (typeof window.cosOnAuth === 'function') {
-              window.cosOnAuth(res.data.user);
-            }
-          }, 300);
-          return;
-        }
-        // ── Cas 2 : confirmation email ACTIVÉE → afficher message "vérifiez email"
-        setBtn('cos-signup-btn', '✓ Compte créé', true);
-        var form = document.getElementById('cos-form-signup');
-        if (form) {
-          form.innerHTML = '<div style="text-align:center;padding:20px 0">' +
-            '<div style="font-size:42px;margin-bottom:12px">📧</div>' +
-            '<div style="font-size:18px;color:#fff;margin-bottom:8px;font-family:Instrument Serif,serif">Vérifiez votre email</div>' +
-            '<div style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.7;margin-bottom:18px">Un email de confirmation a été envoyé à <b>' + email + '</b>. Cliquez sur le lien pour activer votre compte, puis connectez-vous.</div>' +
-            '<button onclick="cosAuthTab(\'signin\')" style="padding:10px 22px;background:#d4880a;border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Aller à la connexion →</button>' +
-          '</div>';
-        }
-      })
-      .catch(function(e) {
-        setBtn('cos-signup-btn', 'Créer mon compte', false);
-        showErr('cos-signup-err', 'Erreur: ' + (e.message || 'inconnue'));
-      });
-  };
-
-  // ══ OVERRIDES FINAUX ═══════════════════════════════════════════════════
-  // Ces overrides remplacent les anciennes définitions par les v9
-  window.cosOnAuth     = window.cosOnAuthV9;
-  window.authOnboard   = window.authOnboardV9;
-  window.authSignOut   = window.authSignOutV9;
-  window.authMagicLink = window.authMagicLinkV9;
-  window.submitCadeau  = window.submitCadeauV9;
-  window.submitConflict = window.submitConflictV9;
-  window.submitAlert   = window.submitAlertV9;
-  window.cosLoadDeclarations = window.cosLoadDeclarationsV9;
-  window.cosStartRealtime    = window.cosStartRealtimeV9;
-  window.cosInviteEmployee   = window.cosInviteEmployeeV9;
-  window.cosInviteSupplier   = window.cosInviteSupplierV9;
-
-  // ══ BOOTSTRAP : écouter auth + appeler cosOnAuthV9 ═════════════════════
-  if (!db()) { warn('COS_DB absent, bootstrap annulé'); return; }
-  var bootstrapDone = false;
+  // ── BOOTSTRAP : check session existante au chargement ────────────────
   function bootstrap() {
-    if (bootstrapDone) return;
-    bootstrapDone = true;
-    log('Bootstrap v9 démarré');
+    if (!db()) { log('COS_DB absent, bootstrap annulé'); return; }
+    log('Bootstrap v10 démarré');
+
     db().auth.getSession().then(function(r) {
       var s = r && r.data && r.data.session;
-      if (s) {
-        log('Session existante');
-        window.cosOnAuthV9(s.user);
+      if (s && s.user) {
+        log('Session existante:', s.user.email);
+        fetchProfileAndRoute(s.user);
       } else {
         log('Aucune session → landing');
-        showOv();
+        var ov = $('cos-ov'); if (ov) ov.style.display = 'none';
+        if (typeof window.showSc === 'function') window.showSc('land');
       }
     });
-    // Listener UNIQUE pour les futurs events
+
+    // Listener unique pour les changements d'auth
     db().auth.onAuthStateChange(function(ev, session) {
       log('Auth event:', ev);
-      if (ev === 'SIGNED_IN' && session) {
-        window.cosOnAuthV9(session.user);
+      if (ev === 'SIGNED_IN' && session && session.user && !window._USER) {
+        fetchProfileAndRoute(session.user);
       } else if (ev === 'SIGNED_OUT') {
-        window._COS_UID = null; window._COS_CID = null; window._COS_PROFILE = null;
-        showOv();
+        window._USER = null;
+        location.reload();
       }
     });
   }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', bootstrap);
   } else {
-    bootstrap();
+    setTimeout(bootstrap, 100);
   }
 
-  log('Module v9 chargé ✓');
+  log('Module v10 chargé ✓');
 })();
-
-
-/* ══════════════════════════════════════════════════════════════════════════
-   COMPLIANCEOS v9.1 — RBAC (Role-Based Access Control)
-   Sécurise l'accès aux écrans selon le rôle du user connecté.
-   ══════════════════════════════════════════════════════════════════════════ */
-(function() {
-  'use strict';
-
-  // Matrice des écrans autorisés par rôle
-  var ROLE_ACCESS = {
-    CCO:           ['cco', 'land'],
-    fournisseur:   ['supplier', 'land'],
-    collaborateur: ['collab', 'land'],
-    _default:      ['land']
-  };
-
-  // Tabs autorisés dans l'écran CCO par rôle (sécurité fine si on veut limiter)
-  var CCO_TABS_BY_ROLE = {
-    CCO: null,  // tout autorisé
-  };
-
-  // ── Verrouille l'accès aux écrans selon le rôle ──────────────────────
-  window.cosApplyRBAC = function(role) {
-    if (!role) role = '_default';
-    role = role.toLowerCase();
-    if (role === 'cco') role = 'CCO'; // normaliser majuscules
-
-    var allowed = ROLE_ACCESS[role] || ROLE_ACCESS._default;
-    console.log('[RBAC] Rôle:', role, '→ écrans autorisés:', allowed);
-
-    // Masquer physiquement les écrans non autorisés pour éviter le bypass
-    ['sc-cco', 'sc-supplier', 'sc-collab'].forEach(function(scId) {
-      var el = document.getElementById(scId);
-      if (!el) return;
-      var scName = scId.replace('sc-', '');
-      if (allowed.indexOf(scName) < 0) {
-        el.setAttribute('data-rbac-locked', 'true');
-      } else {
-        el.removeAttribute('data-rbac-locked');
-      }
-    });
-
-    // Masquer boutons/liens qui pointent vers des écrans interdits
-    // (les boutons "Voir démo CCO" etc.)
-    var demoButtons = document.querySelectorAll('[onclick*="enterDemoMode"], [onclick*="cosShowDemoMenu"]');
-    Array.prototype.forEach.call(demoButtons, function(b) {
-      if (role !== '_default') b.style.display = 'none';
-    });
-
-    // Masquer la topbar landing dès qu'on est connecté
-    var topbar = document.getElementById('cos-landing-topbar');
-    if (topbar && role !== '_default') topbar.style.display = 'none';
-
-    window._COS_RBAC_ROLE = role;
-  };
-
-  // ── Override showSc pour bloquer les accès non autorisés ─────────────
-  var originalShowSc = window.showSc;
-  window.showSc = function(id) {
-    var role = window._COS_RBAC_ROLE || '_default';
-    var allowed = ROLE_ACCESS[role] || ROLE_ACCESS._default;
-    if (allowed.indexOf(id) < 0) {
-      console.warn('[RBAC] Accès refusé à l\'écran:', id, 'pour rôle:', role);
-      // Rediriger vers l'écran par défaut du rôle
-      var defaultScreen = allowed[0] || 'land';
-      if (originalShowSc) originalShowSc(defaultScreen);
-      return;
-    }
-    if (originalShowSc) originalShowSc(id);
-  };
-
-  // ── Hook sur cosRoute pour appliquer le RBAC après chaque routing ────
-  var originalCosRoute = window.cosRoute;
-  window.cosRoute = function(p) {
-    if (!p) p = {};
-    var role = p.role || (window._COS_PROFILE && window._COS_PROFILE.role) || 'CCO';
-    window.cosApplyRBAC(role);
-    if (originalCosRoute) originalCosRoute(p);
-  };
-
-  console.log('[v9.1 RBAC] Module chargé ✓');
-})();
-
 
 </script>
 <!-- COS Invite FAB — bouton flottant d'invitation (visible uniquement pour CCO) -->
@@ -16965,294 +16471,6 @@ function cosDoInvite() {
     <span>🏭</span><span>Inviter fournisseur</span>
   </button>
 </div>
-
-
-<!-- ══════════════════════════════════════════════════════════════════════════
-     COMPLIANCEOS v9.2 — Wizard inscription 3 parcours (CCO / Fournisseur / Invité)
-     Remplace le signup générique par un choix de rôle en amont
-     ══════════════════════════════════════════════════════════════════════════ -->
-<div id="cos-signup-wizard" style="display:none;position:fixed;inset:0;background:#0f1a2e;z-index:99999;align-items:center;justify-content:center;padding:20px;overflow-y:auto">
-  <div style="width:100%;max-width:520px;margin:40px auto">
-
-    <!-- ÉTAPE 0 : Choix du parcours -->
-    <div id="wiz-step-choice" style="display:block">
-      <div style="text-align:center;margin-bottom:30px">
-        <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:10px">
-          <div style="width:40px;height:40px;background:#d4880a;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff">C</div>
-          <span style="font-size:24px;color:#fff;font-family:Instrument Serif,serif">ComplianceOS</span>
-        </div>
-        <div style="font-size:22px;color:#fff;margin-bottom:8px;font-family:Instrument Serif,serif">Créez votre compte</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.5)">Choisissez votre profil pour commencer.</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <button onclick="wizSelectRole('CCO')" style="background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:18px 20px;text-align:left;cursor:pointer;color:#fff;font-family:inherit;transition:all .2s" onmouseover="this.style.borderColor='#d4880a';this.style.background='rgba(212,136,10,.08)'" onmouseout="this.style.borderColor='rgba(255,255,255,.1)';this.style.background='rgba(255,255,255,.05)'">
-          <div style="font-size:18px;margin-bottom:4px">👔 Je suis un CCO / Responsable Compliance</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.5);font-weight:400">Je pilote la conformité de mon entreprise. Je souhaite créer mon espace et inviter mes collaborateurs et fournisseurs.</div>
-        </button>
-        <button onclick="wizSelectRole('fournisseur')" style="background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:18px 20px;text-align:left;cursor:pointer;color:#fff;font-family:inherit;transition:all .2s" onmouseover="this.style.borderColor='#6EE7B7';this.style.background='rgba(110,231,183,.08)'" onmouseout="this.style.borderColor='rgba(255,255,255,.1)';this.style.background='rgba(255,255,255,.05)'">
-          <div style="font-size:18px;margin-bottom:4px">🏭 Je suis un Fournisseur</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.5);font-weight:400">Je gère mon Passeport Compliance et partage mes données aux entreprises clientes qui en font la demande.</div>
-        </button>
-        <button onclick="wizSelectRole('invited')" style="background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:18px 20px;text-align:left;cursor:pointer;color:#fff;font-family:inherit;transition:all .2s" onmouseover="this.style.borderColor='#7ab3ff';this.style.background='rgba(122,179,255,.08)'" onmouseout="this.style.borderColor='rgba(255,255,255,.1)';this.style.background='rgba(255,255,255,.05)'">
-          <div style="font-size:18px;margin-bottom:4px">✉ J'ai reçu une invitation</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.5);font-weight:400">J'ai été invité(e) par un CCO ou une entreprise à rejoindre ComplianceOS.</div>
-        </button>
-      </div>
-      <div style="text-align:center;margin-top:24px">
-        <a href="javascript:void(0)" onclick="wizClose()" style="font-size:12px;color:rgba(255,255,255,.4);text-decoration:none">← Retour</a>
-        <span style="color:rgba(255,255,255,.3);margin:0 10px">·</span>
-        <a href="javascript:void(0)" onclick="wizClose();cosOpenLogin()" style="font-size:12px;color:#d4880a;text-decoration:none">Déjà un compte ? Se connecter</a>
-      </div>
-    </div>
-
-    <!-- ÉTAPE 1 : Formulaire CCO -->
-    <div id="wiz-step-CCO" style="display:none">
-      <div style="text-align:center;margin-bottom:24px">
-        <div style="font-size:22px;color:#fff;margin-bottom:4px;font-family:Instrument Serif,serif">Créer votre espace CCO</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.4)">Configurez votre plateforme en 1 minute.</div>
-      </div>
-      <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:24px">
-        <label class="wiz-lbl">NOM ET PRÉNOM</label>
-        <input id="wiz-cco-nom" type="text" placeholder="Jean Dupont" class="wiz-inp">
-        <label class="wiz-lbl">NOM DE VOTRE ENTREPRISE</label>
-        <input id="wiz-cco-entreprise" type="text" placeholder="Hublot SA" class="wiz-inp">
-        <label class="wiz-lbl">EMAIL PROFESSIONNEL</label>
-        <input id="wiz-cco-email" type="email" placeholder="jean.dupont@hublot.com" autocomplete="email" class="wiz-inp">
-        <label class="wiz-lbl">MOT DE PASSE <span style="font-weight:400;opacity:.5">(8 caractères min.)</span></label>
-        <input id="wiz-cco-pwd" type="password" placeholder="••••••••" autocomplete="new-password" class="wiz-inp">
-        <div id="wiz-cco-err" class="wiz-err"></div>
-        <button id="wiz-cco-btn" onclick="wizSubmit('CCO')" class="wiz-btn">Créer mon espace CCO →</button>
-      </div>
-      <div style="text-align:center;margin-top:14px">
-        <a href="javascript:void(0)" onclick="wizBack()" style="font-size:12px;color:rgba(255,255,255,.4);text-decoration:none">← Changer de profil</a>
-      </div>
-    </div>
-
-    <!-- ÉTAPE 2 : Formulaire Fournisseur -->
-    <div id="wiz-step-fournisseur" style="display:none">
-      <div style="text-align:center;margin-bottom:24px">
-        <div style="font-size:22px;color:#fff;margin-bottom:4px;font-family:Instrument Serif,serif">Créer votre compte Fournisseur</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.4)">Un seul compte pour toutes vos entreprises clientes.</div>
-      </div>
-      <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:24px">
-        <label class="wiz-lbl">NOM ET PRÉNOM</label>
-        <input id="wiz-sup-nom" type="text" placeholder="Marie Durand" class="wiz-inp">
-        <label class="wiz-lbl">RAISON SOCIALE</label>
-        <input id="wiz-sup-raison" type="text" placeholder="Industria SAS" class="wiz-inp">
-        <label class="wiz-lbl">SIREN <span style="font-weight:400;opacity:.5">(optionnel)</span></label>
-        <input id="wiz-sup-siren" type="text" placeholder="483264817" maxlength="9" class="wiz-inp">
-        <label class="wiz-lbl">EMAIL PROFESSIONNEL</label>
-        <input id="wiz-sup-email" type="email" placeholder="marie@industria.fr" autocomplete="email" class="wiz-inp">
-        <label class="wiz-lbl">MOT DE PASSE <span style="font-weight:400;opacity:.5">(8 caractères min.)</span></label>
-        <input id="wiz-sup-pwd" type="password" placeholder="••••••••" autocomplete="new-password" class="wiz-inp">
-        <div id="wiz-sup-err" class="wiz-err"></div>
-        <button id="wiz-sup-btn" onclick="wizSubmit('fournisseur')" class="wiz-btn">Créer mon compte Fournisseur →</button>
-      </div>
-      <div style="text-align:center;margin-top:14px">
-        <a href="javascript:void(0)" onclick="wizBack()" style="font-size:12px;color:rgba(255,255,255,.4);text-decoration:none">← Changer de profil</a>
-      </div>
-    </div>
-
-    <!-- ÉTAPE 3 : Invitation -->
-    <div id="wiz-step-invited" style="display:none">
-      <div style="text-align:center;margin-bottom:24px">
-        <div style="font-size:22px;color:#fff;margin-bottom:4px;font-family:Instrument Serif,serif">J'ai reçu une invitation</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.4)">Cliquez sur le lien reçu par email, ou saisissez le token ci-dessous.</div>
-      </div>
-      <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:24px">
-        <label class="wiz-lbl">TOKEN D'INVITATION</label>
-        <input id="wiz-inv-token" type="text" placeholder="inv_xxx_xxxxx" class="wiz-inp" style="font-family:monospace">
-        <div style="font-size:11px;color:rgba(255,255,255,.4);margin:-8px 0 14px 0;line-height:1.5">Trouvez ce code dans l'email d'invitation reçu de votre CCO. Le lien complet ressemble à : <span style="font-family:monospace;color:#d4880a">.../?invite=inv_xxx</span></div>
-        <div id="wiz-inv-err" class="wiz-err"></div>
-        <button id="wiz-inv-btn" onclick="wizSubmit('invited')" class="wiz-btn">Vérifier mon invitation →</button>
-      </div>
-      <div style="text-align:center;margin-top:14px">
-        <a href="javascript:void(0)" onclick="wizBack()" style="font-size:12px;color:rgba(255,255,255,.4);text-decoration:none">← Changer de profil</a>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<style>
-.wiz-lbl { font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.5);display:block;margin-bottom:5px; }
-.wiz-inp { width:100%;padding:11px 13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:14px;font-family:inherit; }
-.wiz-inp:focus { border-color:#d4880a; }
-.wiz-btn { width:100%;padding:13px;background:#d4880a;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px; }
-.wiz-btn:disabled { opacity:.5;cursor:not-allowed; }
-.wiz-err { font-size:12px;color:#fca5a5;margin-bottom:10px;display:none;padding:8px 10px;background:rgba(252,165,165,.1);border-radius:6px; }
-</style>
-
-<script>
-(function() {
-  'use strict';
-
-  window.wizOpen = function() {
-    document.getElementById('cos-signup-wizard').style.display = 'flex';
-    wizGoStep('choice');
-  };
-  window.wizClose = function() {
-    document.getElementById('cos-signup-wizard').style.display = 'none';
-  };
-  window.wizBack = function() { wizGoStep('choice'); };
-  window.wizSelectRole = function(role) { wizGoStep(role); };
-
-  function wizGoStep(step) {
-    ['choice','CCO','fournisseur','invited'].forEach(function(s) {
-      var el = document.getElementById('wiz-step-' + s);
-      if (el) el.style.display = (s === step) ? 'block' : 'none';
-    });
-  }
-
-  function showErr(id, msg) {
-    var el = document.getElementById(id);
-    if (el) { el.textContent = msg; el.style.display = 'block'; }
-  }
-  function setBtn(id, txt, disabled) {
-    var b = document.getElementById(id);
-    if (b) { b.textContent = txt; b.disabled = !!disabled; }
-  }
-
-  window.wizSubmit = function(role) {
-    var db = window.COS_DB;
-    if (!db) return alert('Base de données non initialisée. Rechargez la page.');
-
-    // ── Parcours CCO ──────────────────────────────────────────────
-    if (role === 'CCO') {
-      var nom = (document.getElementById('wiz-cco-nom').value || '').trim();
-      var entreprise = (document.getElementById('wiz-cco-entreprise').value || '').trim();
-      var email = (document.getElementById('wiz-cco-email').value || '').trim().toLowerCase();
-      var pwd = document.getElementById('wiz-cco-pwd').value || '';
-
-      if (!nom) return showErr('wiz-cco-err', 'Nom requis.');
-      if (!entreprise) return showErr('wiz-cco-err', "Nom d'entreprise requis.");
-      if (!email || email.indexOf('@') < 0) return showErr('wiz-cco-err', 'Email invalide.');
-      if (!pwd || pwd.length < 8) return showErr('wiz-cco-err', 'Mot de passe : 8 caractères min.');
-
-      setBtn('wiz-cco-btn', 'Création...', true);
-      document.getElementById('wiz-cco-err').style.display = 'none';
-
-      // 1. Créer user Supabase
-      db.auth.signUp({ email: email, password: pwd, options: { emailRedirectTo: window.location.origin } })
-        .then(function(r) {
-          if (r.error) { setBtn('wiz-cco-btn', 'Créer mon espace CCO →', false); return showErr('wiz-cco-err', r.error.message); }
-          if (!r.data || !r.data.user) { setBtn('wiz-cco-btn', 'Créer mon espace CCO →', false); return showErr('wiz-cco-err', 'Erreur création compte.'); }
-          var uid = r.data.user.id;
-
-          // 2. Créer l'entreprise
-          db.from('companies').insert({ name: entreprise, plan: 'decouverte', country: 'FR' })
-            .select().single()
-            .then(function(cr) {
-              if (cr.error) { setBtn('wiz-cco-btn', 'Créer mon espace CCO →', false); return showErr('wiz-cco-err', 'Erreur entreprise : ' + cr.error.message); }
-              var cid = cr.data.id;
-
-              // 3. Créer le profil CCO
-              db.from('profiles').upsert({
-                id: uid, company_id: cid, email: email, nom: nom,
-                role: 'CCO', onboarded: true
-              }, { onConflict: 'id' }).then(function(pr) {
-                if (pr.error) { setBtn('wiz-cco-btn', 'Créer mon espace CCO →', false); return showErr('wiz-cco-err', 'Erreur profil : ' + pr.error.message); }
-
-                // Succès !
-                window._COS_CID = cid;
-                window._COS_UID = uid;
-                window._COS_PROFILE = { nom: nom, role: 'CCO', email: email, company_id: cid };
-
-                setBtn('wiz-cco-btn', '✓ Espace créé', false);
-                if (window.toast) window.toast('✓ Bienvenue ' + nom.split(' ')[0], 'var(--green)');
-
-                setTimeout(function() {
-                  wizClose();
-                  if (typeof window.cosRoute === 'function') window.cosRoute({ role: 'CCO', email: email });
-                  if (window.cosLoadDeclarationsV9) window.cosLoadDeclarationsV9();
-                  if (window.cosStartRealtimeV9) window.cosStartRealtimeV9();
-                }, 800);
-              });
-            });
-        }).catch(function(e) {
-          setBtn('wiz-cco-btn', 'Créer mon espace CCO →', false);
-          showErr('wiz-cco-err', 'Erreur : ' + (e.message || e));
-        });
-      return;
-    }
-
-    // ── Parcours Fournisseur ─────────────────────────────────────
-    if (role === 'fournisseur') {
-      var nomS = (document.getElementById('wiz-sup-nom').value || '').trim();
-      var raison = (document.getElementById('wiz-sup-raison').value || '').trim();
-      var siren = (document.getElementById('wiz-sup-siren').value || '').trim();
-      var emailS = (document.getElementById('wiz-sup-email').value || '').trim().toLowerCase();
-      var pwdS = document.getElementById('wiz-sup-pwd').value || '';
-
-      if (!nomS) return showErr('wiz-sup-err', 'Nom requis.');
-      if (!raison) return showErr('wiz-sup-err', 'Raison sociale requise.');
-      if (!emailS || emailS.indexOf('@') < 0) return showErr('wiz-sup-err', 'Email invalide.');
-      if (!pwdS || pwdS.length < 8) return showErr('wiz-sup-err', 'Mot de passe : 8 caractères min.');
-
-      setBtn('wiz-sup-btn', 'Création...', true);
-      document.getElementById('wiz-sup-err').style.display = 'none';
-
-      db.auth.signUp({ email: emailS, password: pwdS, options: { emailRedirectTo: window.location.origin } })
-        .then(function(r) {
-          if (r.error) { setBtn('wiz-sup-btn', 'Créer mon compte Fournisseur →', false); return showErr('wiz-sup-err', r.error.message); }
-          var uid = r.data.user.id;
-
-          db.from('profiles').upsert({
-            id: uid, email: emailS, nom: nomS, role: 'fournisseur', onboarded: true
-          }, { onConflict: 'id' }).then(function(pr) {
-            if (pr.error) { setBtn('wiz-sup-btn', 'Créer mon compte Fournisseur →', false); return showErr('wiz-sup-err', 'Erreur profil : ' + pr.error.message); }
-
-            db.from('supplier_accounts').upsert({
-              user_id: uid, email: emailS, contact_nom: nomS,
-              raison_sociale: raison, siren: siren || null
-            }, { onConflict: 'user_id' }).then(function(sr) {
-              // même si sr.error, on continue - compte quand même créé
-              window._COS_UID = uid;
-              window._COS_PROFILE = { nom: nomS, role: 'fournisseur', email: emailS };
-
-              setBtn('wiz-sup-btn', '✓ Compte créé', false);
-              if (window.toast) window.toast('✓ Bienvenue ' + nomS.split(' ')[0], 'var(--green)');
-
-              setTimeout(function() {
-                wizClose();
-                if (typeof window.cosRoute === 'function') window.cosRoute({ role: 'fournisseur', email: emailS });
-              }, 800);
-            });
-          });
-        }).catch(function(e) {
-          setBtn('wiz-sup-btn', 'Créer mon compte Fournisseur →', false);
-          showErr('wiz-sup-err', 'Erreur : ' + (e.message || e));
-        });
-      return;
-    }
-
-    // ── Parcours Invitation ───────────────────────────────────────
-    if (role === 'invited') {
-      var token = (document.getElementById('wiz-inv-token').value || '').trim();
-      if (!token) return showErr('wiz-inv-err', "Token d'invitation requis.");
-
-      setBtn('wiz-inv-btn', 'Vérification...', true);
-      document.getElementById('wiz-inv-err').style.display = 'none';
-
-      db.from('invitations')
-        .select('id,email,company_id,role,kind,accepted,companies(id,name)')
-        .eq('token', token).limit(1)
-        .then(function(r) {
-          setBtn('wiz-inv-btn', 'Vérifier mon invitation →', false);
-          if (r.error) return showErr('wiz-inv-err', 'Erreur : ' + r.error.message);
-          var inv = r.data && r.data[0];
-          if (!inv) return showErr('wiz-inv-err', 'Token invalide ou expiré.');
-          if (inv.accepted) return showErr('wiz-inv-err', 'Cette invitation a déjà été acceptée.');
-
-          // Rediriger vers le signup normal avec le token en URL (qui sera pris par v9 auth)
-          window.location.href = window.location.pathname + '?invite=' + encodeURIComponent(token);
-        });
-      return;
-    }
-  };
-  console.log('[v9.2 Wizard] Inscription 3 parcours chargée ✓');
-})();
-</script>
 
 </body>
 </html>
