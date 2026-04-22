@@ -16682,6 +16682,144 @@ function cosDoInvite() {
   window.cosInviteEmployeeV9 = function(){ window.cosShowInviteModalV9('employee'); };
   window.cosInviteSupplierV9 = function(){ window.cosShowInviteModalV9('supplier'); };
 
+
+  // ══ AUTH UI (login/signup/tab - restauré depuis v8) ════════════════════
+  
+  // Helpers utilisés par cosSignIn / cosSignUp
+  function showErr(id, msg) {
+    var el = document.getElementById(id);
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+    else { log('showErr:', id, msg); }
+  }
+  function setBtn(id, txt, disabled) {
+    var b = document.getElementById(id);
+    if (b) { b.textContent = txt; b.disabled = !!disabled; }
+  }
+
+
+  window.cosOpenLogin = function(redirectRole) {
+    window._COS_REDIRECT_ROLE = redirectRole || null;
+    var ov = document.getElementById('cos-ov');
+    if (ov) ov.style.display = 'flex';
+  };
+
+  window.cosCloseLogin = function() {
+    var ov = document.getElementById('cos-ov');
+    if (ov) ov.style.display = 'none';
+    if (typeof showSc === 'function') showSc('land');
+  };
+
+  window.cosAuthTab = function(tab) {
+    var tabSignin = document.getElementById('cos-tab-signin');
+    var tabSignup = document.getElementById('cos-tab-signup');
+    var frmSignin = document.getElementById('cos-form-signin');
+    var frmSignup = document.getElementById('cos-form-signup');
+    if (!tabSignin) return;
+    if (tab === 'signup') {
+      tabSignup.style.background = 'rgba(255,255,255,.1)'; tabSignup.style.color = '#fff';
+      tabSignin.style.background = 'transparent';         tabSignin.style.color = 'rgba(255,255,255,.5)';
+      frmSignup.style.display = 'block'; frmSignin.style.display = 'none';
+    } else {
+      tabSignin.style.background = 'rgba(255,255,255,.1)'; tabSignin.style.color = '#fff';
+      tabSignup.style.background = 'transparent';         tabSignup.style.color = 'rgba(255,255,255,.5)';
+      frmSignin.style.display = 'block'; frmSignup.style.display = 'none';
+    }
+    // Reset erreurs
+    var errIn = document.getElementById('cos-signin-err');
+    var errUp = document.getElementById('cos-signup-err');
+    if (errIn) errIn.style.display = 'none';
+    if (errUp) errUp.style.display = 'none';
+  };
+
+  window.cosSignIn = function() {
+    var email = (document.getElementById('cos-signin-email') || {}).value || '';
+    var pwd   = (document.getElementById('cos-signin-pwd')   || {}).value || '';
+    email = email.trim().toLowerCase();
+    if (!email || email.indexOf('@') < 0) return showErr('cos-signin-err', 'Email invalide.');
+    if (!pwd || pwd.length < 6)           return showErr('cos-signin-err', 'Mot de passe requis.');
+    if (!window.COS_DB)                    return showErr('cos-signin-err', 'Erreur init. Rechargez la page.');
+    setBtn('cos-signin-btn', 'Connexion...', true);
+    var errEl = document.getElementById('cos-signin-err');
+    if (errEl) errEl.style.display = 'none';
+    window.COS_DB.auth.signInWithPassword({ email: email, password: pwd })
+      .then(function(res) {
+        if (res.error) {
+          setBtn('cos-signin-btn', 'Se connecter', false);
+          var msg = res.error.message || 'Erreur de connexion';
+          if (msg.indexOf('Invalid login') >= 0) msg = 'Email ou mot de passe incorrect.';
+          if (msg.indexOf('Email not confirmed') >= 0) msg = 'Email non confirmé. Vérifiez votre boîte mail.';
+          return showErr('cos-signin-err', msg);
+        }
+        if (typeof cosDebug === 'function') cosDebug('SignIn OK: ' + email);
+        // La session est maintenant active. cosOnAuth sera déclenché par onAuthStateChange.
+        // On déclenche manuellement au cas où.
+        if (res.data && res.data.user && typeof window.cosOnAuth === 'function') {
+          window.cosOnAuth(res.data.user);
+        }
+      })
+      .catch(function(e) {
+        setBtn('cos-signin-btn', 'Se connecter', false);
+        showErr('cos-signin-err', 'Erreur: ' + (e.message || 'inconnue'));
+      });
+  };
+
+  window.cosSignUp = function() {
+    var email = (document.getElementById('cos-signup-email') || {}).value || '';
+    var pwd   = (document.getElementById('cos-signup-pwd')   || {}).value || '';
+    email = email.trim().toLowerCase();
+    if (!email || email.indexOf('@') < 0) return showErr('cos-signup-err', 'Email invalide.');
+    if (!pwd || pwd.length < 8)           return showErr('cos-signup-err', 'Mot de passe : 8 caractères minimum.');
+    if (!window.COS_DB)                    return showErr('cos-signup-err', 'Erreur init. Rechargez la page.');
+    setBtn('cos-signup-btn', 'Création...', true);
+    var errEl = document.getElementById('cos-signup-err');
+    if (errEl) errEl.style.display = 'none';
+    window.COS_DB.auth.signUp({
+      email: email,
+      password: pwd,
+      options: {
+        emailRedirectTo: window.location.origin
+      }
+    })
+      .then(function(res) {
+        if (res.error) {
+          setBtn('cos-signup-btn', 'Créer mon compte', false);
+          var msg = res.error.message || 'Erreur';
+          if (msg.indexOf('already registered') >= 0 || msg.indexOf('User already') >= 0) {
+            msg = 'Cet email est déjà utilisé. Connectez-vous.';
+          }
+          return showErr('cos-signup-err', msg);
+        }
+        if (typeof cosDebug === 'function') cosDebug('SignUp OK: ' + email);
+        // ── Cas 1 : confirmation email DÉSACTIVÉE dans Supabase → session immédiate
+        if (res.data && res.data.session) {
+          if (typeof cosDebug === 'function') cosDebug('Session directe, redirect onboarding');
+          // Lancer l'onboarding directement
+          setBtn('cos-signup-btn', '✓', true);
+          setTimeout(function() {
+            if (typeof window.cosOnAuth === 'function') {
+              window.cosOnAuth(res.data.user);
+            }
+          }, 300);
+          return;
+        }
+        // ── Cas 2 : confirmation email ACTIVÉE → afficher message "vérifiez email"
+        setBtn('cos-signup-btn', '✓ Compte créé', true);
+        var form = document.getElementById('cos-form-signup');
+        if (form) {
+          form.innerHTML = '<div style="text-align:center;padding:20px 0">' +
+            '<div style="font-size:42px;margin-bottom:12px">📧</div>' +
+            '<div style="font-size:18px;color:#fff;margin-bottom:8px;font-family:Instrument Serif,serif">Vérifiez votre email</div>' +
+            '<div style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.7;margin-bottom:18px">Un email de confirmation a été envoyé à <b>' + email + '</b>. Cliquez sur le lien pour activer votre compte, puis connectez-vous.</div>' +
+            '<button onclick="cosAuthTab(\'signin\')" style="padding:10px 22px;background:#d4880a;border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Aller à la connexion →</button>' +
+          '</div>';
+        }
+      })
+      .catch(function(e) {
+        setBtn('cos-signup-btn', 'Créer mon compte', false);
+        showErr('cos-signup-err', 'Erreur: ' + (e.message || 'inconnue'));
+      });
+  };
+
   // ══ OVERRIDES FINAUX ═══════════════════════════════════════════════════
   // Ces overrides remplacent les anciennes définitions par les v9
   window.cosOnAuth     = window.cosOnAuthV9;
