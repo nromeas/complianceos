@@ -704,13 +704,17 @@ window.COS_DB = window.supabase.createClient(
 );
 var _h = window.location.hash || "", _s = window.location.search || "";
 window._COS_TOKEN = _h.indexOf("access_token")>-1||_s.indexOf("access_token")>-1||_h.indexOf("type=magiclink")>-1;
-/* v10 handles magic link token */
+if (window._COS_TOKEN) {
+  window.COS_DB.auth.onAuthStateChange(function(ev, session) {
+    if (ev === "SIGNED_IN" && session) { window._COS_SESSION = session; }
+  });
+}
 </script>
 </head>
 <body>
 <!-- COS v8 Landing Top Bar -->
 <div id="cos-landing-topbar" style="position:fixed;top:0;left:0;right:0;background:rgba(15,26,46,.95);backdrop-filter:blur(10px);padding:10px 20px;z-index:1000;display:flex;justify-content:flex-end;gap:10px;border-bottom:1px solid rgba(255,255,255,.08);display:none">
-  <button onclick="openOverlay('signup')" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">👁 Voir la démo</button>
+  <button onclick="openOverlay('signup')" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Créer un compte</button>
   <button onclick="cosOpenLogin()" style="background:#D4880A;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Se connecter</button>
 </div>
 <script>
@@ -744,18 +748,18 @@ setInterval(function() {
      OVERLAY AUTH v8 — Email + Password
      Remplace intégralement l'ancien cos-ov
      ═══════════════════════════════════════════════════════════════════════ -->
-<!-- ═══════════════════════════════════════════════════════════════════════
-     AUTH OVERLAY MINIMAL (v10) — signin + signup + onboarding en 1 écran
-     ═══════════════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════════
+     COMPLIANCEOS v12 — Auth Overlay complet (signup 8 champs + signin)
+     ═══════════════════════════════════════════════════════════════════ -->
 <div id="cos-ov" style="position:fixed;inset:0;background:#0f1a2e;z-index:99999;display:none;align-items:center;justify-content:center;padding:20px;overflow-y:auto">
-  <div style="width:100%;max-width:440px;margin:40px auto">
+  <div style="width:100%;max-width:520px;margin:30px auto">
 
-    <div style="text-align:center;margin-bottom:26px">
+    <div style="text-align:center;margin-bottom:24px">
       <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:8px">
         <div style="width:38px;height:38px;background:#d4880a;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;color:#fff">C</div>
         <span style="font-size:23px;color:#fff;font-family:Instrument Serif,serif">ComplianceOS</span>
       </div>
-      <div style="font-size:13px;color:rgba(255,255,255,.4)">La compliance E&amp;C, enfin opérationnelle.</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.4)">La compliance E&amp;C, enfin op&eacute;rationnelle.</div>
     </div>
 
     <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:26px">
@@ -763,7 +767,7 @@ setInterval(function() {
       <!-- TABS -->
       <div style="display:flex;gap:4px;background:rgba(0,0,0,.25);border-radius:9px;padding:4px;margin-bottom:20px">
         <button id="tab-signin" onclick="authTab('signin')" style="flex:1;padding:9px;background:rgba(255,255,255,.1);border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Se connecter</button>
-        <button id="tab-signup" onclick="authTab('signup')" style="flex:1;padding:9px;background:transparent;border:none;border-radius:6px;color:rgba(255,255,255,.5);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Créer un compte</button>
+        <button id="tab-signup" onclick="authTab('signup')" style="flex:1;padding:9px;background:transparent;border:none;border-radius:6px;color:rgba(255,255,255,.5);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Cr&eacute;er un compte</button>
       </div>
 
       <!-- FORM SIGNIN -->
@@ -774,68 +778,106 @@ setInterval(function() {
         <input id="si-email" type="email" autocomplete="email" placeholder="email@entreprise.com" class="inp" onkeydown="if(event.key==='Enter')document.getElementById('si-pwd').focus()">
 
         <label class="lbl">MOT DE PASSE</label>
-        <input id="si-pwd" type="password" autocomplete="current-password" placeholder="••••••••" class="inp" onkeydown="if(event.key==='Enter')doSignIn()">
+        <input id="si-pwd" type="password" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" class="inp" onkeydown="if(event.key==='Enter')doSignIn()">
 
         <div id="si-err" class="err"></div>
         <button id="si-btn" onclick="doSignIn()" class="btn">Se connecter</button>
 
         <div style="text-align:center;margin-top:12px">
-          <a href="javascript:void(0)" onclick="authTab('signup')" style="font-size:12px;color:rgba(255,255,255,.5)">Pas de compte ? <span style="color:#d4880a;font-weight:600">Créer un compte</span></a>
+          <a href="javascript:void(0)" onclick="authTab('signup')" style="font-size:12px;color:rgba(255,255,255,.5)">Pas de compte ? <span style="color:#d4880a;font-weight:600">Cr&eacute;er un compte</span></a>
         </div>
       </div>
 
-      <!-- FORM SIGNUP -->
+      <!-- FORM SIGNUP (8 CHAMPS) -->
       <div id="form-signup" style="display:none">
-        <div style="font-size:20px;color:#fff;margin-bottom:16px;font-family:Instrument Serif,serif">Créer votre compte</div>
+        <div style="font-size:20px;color:#fff;margin-bottom:6px;font-family:Instrument Serif,serif">Cr&eacute;er votre compte</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:18px">Renseignez vos informations pour commencer.</div>
 
-        <label class="lbl">NOM COMPLET</label>
-        <input id="su-nom" type="text" placeholder="Jean Dupont" class="inp">
+        <!-- Ligne 1 : Prenom + Nom -->
+        <div style="display:flex;gap:10px">
+          <div style="flex:1">
+            <label class="lbl">PR&Eacute;NOM *</label>
+            <input id="su-prenom" type="text" placeholder="Jean" class="inp" autocomplete="given-name">
+          </div>
+          <div style="flex:1">
+            <label class="lbl">NOM *</label>
+            <input id="su-nom" type="text" placeholder="Dupont" class="inp" autocomplete="family-name">
+          </div>
+        </div>
 
-        <label class="lbl">EMAIL</label>
-        <input id="su-email" type="email" autocomplete="email" placeholder="email@entreprise.com" class="inp">
+        <!-- Ligne 2 : Entreprise + Fonction -->
+        <div style="display:flex;gap:10px">
+          <div style="flex:1">
+            <label class="lbl">ENTREPRISE *</label>
+            <input id="su-entreprise" type="text" placeholder="Hublot SA" class="inp" autocomplete="organization">
+          </div>
+          <div style="flex:1">
+            <label class="lbl">FONCTION *</label>
+            <input id="su-fonction" type="text" placeholder="Head of Compliance" class="inp" autocomplete="organization-title">
+          </div>
+        </div>
 
-        <label class="lbl">MOT DE PASSE <span style="font-weight:400;opacity:.5">(8 caractères min.)</span></label>
-        <input id="su-pwd" type="password" autocomplete="new-password" placeholder="••••••••" class="inp">
+        <!-- Ligne 3 : Email + Telephone -->
+        <label class="lbl">EMAIL PROFESSIONNEL *</label>
+        <input id="su-email" type="email" placeholder="jean.dupont@hublot.com" class="inp" autocomplete="email">
 
-        <label class="lbl">VOTRE RÔLE</label>
-        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
-          <label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer" onclick="selectRole('CCO', this)" id="role-CCO">
+        <label class="lbl">T&Eacute;L&Eacute;PHONE</label>
+        <input id="su-tel" type="tel" placeholder="+33 6 12 34 56 78" class="inp" autocomplete="tel">
+
+        <!-- Ligne 4 : Mot de passe -->
+        <label class="lbl">MOT DE PASSE * <span style="font-weight:400;opacity:.5">(8 caract&egrave;res min.)</span></label>
+        <input id="su-pwd" type="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" class="inp" autocomplete="new-password">
+
+        <!-- Role -->
+        <label class="lbl">VOTRE R&Ocirc;LE *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+          <label class="role-opt" onclick="selectRole('CCO', this)" id="role-CCO">
             <input type="radio" name="role" value="CCO" style="margin:0">
-            <span style="font-size:13px;color:#fff;font-weight:600">CCO / Responsable Compliance</span>
+            <div>
+              <div style="font-size:13px;color:#fff;font-weight:600">CCO / Responsable Compliance</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">Pilote la conformit&eacute; de son entreprise</div>
+            </div>
           </label>
-          <label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer" onclick="selectRole('fournisseur', this)" id="role-fournisseur">
+          <label class="role-opt" onclick="selectRole('fournisseur', this)" id="role-fournisseur">
             <input type="radio" name="role" value="fournisseur" style="margin:0">
-            <span style="font-size:13px;color:#fff;font-weight:600">Fournisseur</span>
+            <div>
+              <div style="font-size:13px;color:#fff;font-weight:600">Fournisseur</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">G&egrave;re son Passeport Compliance</div>
+            </div>
           </label>
-          <label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer" onclick="selectRole('collaborateur', this)" id="role-collaborateur">
+          <label class="role-opt" onclick="selectRole('collaborateur', this)" id="role-collaborateur">
             <input type="radio" name="role" value="collaborateur" style="margin:0">
-            <span style="font-size:13px;color:#fff;font-weight:600">Collaborateur</span>
+            <div>
+              <div style="font-size:13px;color:#fff;font-weight:600">Collaborateur</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">D&eacute;clare cadeaux, conflits, alertes</div>
+            </div>
           </label>
         </div>
 
         <div id="su-err" class="err"></div>
-        <button id="su-btn" onclick="doSignUp()" class="btn">Créer mon compte</button>
+        <button id="su-btn" onclick="doSignUp()" class="btn">Cr&eacute;er mon compte</button>
 
         <div style="text-align:center;margin-top:12px">
-          <a href="javascript:void(0)" onclick="authTab('signin')" style="font-size:12px;color:rgba(255,255,255,.5)">Déjà un compte ? <span style="color:#d4880a;font-weight:600">Se connecter</span></a>
+          <a href="javascript:void(0)" onclick="authTab('signin')" style="font-size:12px;color:rgba(255,255,255,.5)">D&eacute;j&agrave; un compte ? <span style="color:#d4880a;font-weight:600">Se connecter</span></a>
         </div>
       </div>
 
-      <div style="text-align:center;margin-top:16px">
-        <a href="javascript:void(0)" onclick="closeOverlay()" style="font-size:11px;color:rgba(255,255,255,.3)">← Retour à l'accueil</a>
+      <div style="text-align:center;margin-top:14px">
+        <a href="javascript:void(0)" onclick="closeOverlay()" style="font-size:11px;color:rgba(255,255,255,.3)">&larr; Retour &agrave; l'accueil</a>
       </div>
     </div>
-
   </div>
 
   <style>
-    #cos-ov .lbl { font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.5);display:block;margin-bottom:5px; }
-    #cos-ov .inp { width:100%;padding:11px 13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:13px;font-family:inherit; }
+    #cos-ov .lbl { font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.5);display:block;margin-bottom:5px;margin-top:2px; }
+    #cos-ov .inp { width:100%;padding:10px 12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:12px;font-family:inherit; }
     #cos-ov .inp:focus { border-color:#d4880a; }
-    #cos-ov .btn { width:100%;padding:13px;background:#d4880a;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit; }
+    #cos-ov .btn { width:100%;padding:13px;background:#d4880a;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px; }
     #cos-ov .btn:disabled { opacity:.5;cursor:not-allowed; }
     #cos-ov .err { font-size:12px;color:#fca5a5;margin-bottom:10px;display:none;padding:8px 10px;background:rgba(252,165,165,.1);border-radius:6px; }
-    #cos-ov label[id^="role-"].selected { border-color:#d4880a !important;background:rgba(212,136,10,.1) !important; }
+    #cos-ov .role-opt { display:flex;align-items:center;gap:12px;padding:11px 13px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer;transition:all .15s; }
+    #cos-ov .role-opt:hover { border-color:rgba(212,136,10,.5); }
+    #cos-ov .role-opt.selected { border-color:#d4880a;background:rgba(212,136,10,.1); }
   </style>
 </div>
 <!-- ============================================================
@@ -2103,7 +2145,7 @@ setInterval(function() {
 <div class="tab-view" id="ctab-politiques">
 <div class="ph"><div class="ph-eye">POLITIQUES — MODULE 10</div><h1 class="ph-title">Bibliothèque E&amp;C</h1><div class="ph-sub">Procédures internes · Documents de référence · Code de conduite · Politiques sectorielles<div style="margin-top:10px"><button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="openCosComms('mod-pol')">&#128172; Messagerie &amp; Notes</button></div></div></div>
 <div class="pb">
-  <div id="politiques-library" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;align-content:start;align-items:stretch"></div>
+  <div id="politiques-library" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-content:start"></div>
 </div>
 </div>
 <!-- DOA & DROITS D'ACCÈS -->
@@ -15351,8 +15393,8 @@ W.cosN=function(id){var ta=document.getElementById("cos-n-"+id);if(!ta)return;ns
 // ================================================================
 // AUTH MODULE
 // ================================================================
-document.addEventListener("DOMContentLoaded", function() { /* v10 bootstrap handles this */ });
-function cosOnAuth(user) { /* v10 handles auth */ }
+document.addEventListener("DOMContentLoaded", function() { /* v12 bootstrap handles */ });
+function cosOnAuth(user) { if(window.v12HandleAuth) window.v12HandleAuth(user); }
 function cosRoute(p) {
   var ov=document.getElementById("cos-ov"),ob=document.getElementById("cos-ob");
   if(ov)ov.style.display="none"; if(ob)ob.style.display="none";
@@ -15367,9 +15409,9 @@ function authSendLink() {
   if (typeof cosAuthTab === 'function') cosAuthTab('signin');
   else if (typeof cosOpenLogin === 'function') cosOpenLogin();
 }
-function authReset() { /* v10 handles */ }
-function authOnboard() { /* v10 handles */ }
-function authSignOut() { if (window.doSignOut) window.doSignOut(); }
+function authReset() { /* v12 */ }
+function authOnboard() { /* v12 handles directly */ }
+function authSignOut() { if(window.doSignOut) window.doSignOut(); }
 console.log("[COS] Auth + Messagerie \u2713");
 // ================================================================
 // COMPLIANCEOS — SUPABASE DATA SYNC MODULE
@@ -16190,29 +16232,28 @@ function cosDoInvite() {
 // ════════════════════════════════════════════════════════════════════════════
 
 
-
 /* ══════════════════════════════════════════════════════════════════════════
-   COMPLIANCEOS v10 — AUTH MINIMAL (version simple pour démo)
-   Juste : signup + signin + route vers dashboard par rôle. Rien d'autre.
+   COMPLIANCEOS v12 — AUTH MODULE (Supabase reset propre)
+   Signup avec 8 champs → insertion dans profiles → route vers dashboard
+   Signin → récupère profile → route vers dashboard du rôle
    ══════════════════════════════════════════════════════════════════════════ */
 (function() {
   'use strict';
 
-  // ── State global ────────────────────────────────────────────────────
-  window._USER = null;
-
-  function log() { try { console.log.apply(console, ['[v10]'].concat([].slice.call(arguments))); } catch(e){} }
   function $(id) { return document.getElementById(id); }
   function db() { return window.COS_DB; }
+  function log() { try { console.log.apply(console, ['[v12]'].concat([].slice.call(arguments))); } catch(e){} }
 
-  // ── Helpers UI ──────────────────────────────────────────────────────
-  function showErr(id, msg) {
-    var el = $(id); if (el) { el.textContent = msg; el.style.display = 'block'; }
-  }
-  function hideErr(id) { var el = $(id); if (el) el.style.display = 'none'; }
+  window._USER = null;
+  window._COS_UID = null;
+  window._COS_PROFILE = null;
+
+  // ── Helpers ────────────────────────────────────────────────────────
+  function showErr(id, msg) { var e = $(id); if (e) { e.textContent = msg; e.style.display = 'block'; } }
+  function hideErr(id) { var e = $(id); if (e) e.style.display = 'none'; }
   function setBtn(id, txt, disabled) { var b = $(id); if (b) { b.textContent = txt; b.disabled = !!disabled; } }
 
-  // ── Overlay open/close ──────────────────────────────────────────────
+  // ── Overlay open/close ─────────────────────────────────────────────
   window.openOverlay = function(tab) {
     var ov = $('cos-ov'); if (ov) ov.style.display = 'flex';
     if (tab) window.authTab(tab);
@@ -16220,12 +16261,10 @@ function cosDoInvite() {
   window.closeOverlay = function() {
     var ov = $('cos-ov'); if (ov) ov.style.display = 'none';
   };
-
-  // Compatibilité : les anciens onclick appellent cosOpenLogin / cosCloseLogin
   window.cosOpenLogin = function() { window.openOverlay('signin'); };
   window.cosCloseLogin = function() { window.closeOverlay(); };
 
-  // ── Tab switcher ────────────────────────────────────────────────────
+  // ── Tab switcher ───────────────────────────────────────────────────
   window.authTab = function(tab) {
     var ts = $('tab-signin'), tu = $('tab-signup');
     var fs = $('form-signin'), fu = $('form-signup');
@@ -16243,44 +16282,49 @@ function cosDoInvite() {
   };
   window.cosAuthTab = window.authTab;
 
-  // ── Rôle select ─────────────────────────────────────────────────────
+  // ── Role selector ──────────────────────────────────────────────────
   window.selectRole = function(role, labelEl) {
     ['CCO','fournisseur','collaborateur'].forEach(function(r) {
-      var el = $('role-' + r);
-      if (el) el.classList.remove('selected');
+      var el = $('role-' + r); if (el) el.classList.remove('selected');
     });
     if (labelEl) labelEl.classList.add('selected');
     var radio = labelEl ? labelEl.querySelector('input[type="radio"]') : null;
     if (radio) radio.checked = true;
   };
 
-  // ── SIGN UP ─────────────────────────────────────────────────────────
+  // ── SIGN UP (8 champs) ─────────────────────────────────────────────
   window.doSignUp = function() {
+    var prenom = ($('su-prenom').value || '').trim();
     var nom = ($('su-nom').value || '').trim();
+    var entreprise = ($('su-entreprise').value || '').trim();
+    var fonction = ($('su-fonction').value || '').trim();
     var email = ($('su-email').value || '').trim().toLowerCase();
+    var tel = ($('su-tel').value || '').trim();
     var pwd = $('su-pwd').value || '';
     var roleEl = document.querySelector('input[name="role"]:checked');
     var role = roleEl ? roleEl.value : '';
 
     hideErr('su-err');
+    if (!prenom) return showErr('su-err', 'Prénom requis.');
     if (!nom) return showErr('su-err', 'Nom requis.');
+    if (!entreprise) return showErr('su-err', 'Entreprise requise.');
+    if (!fonction) return showErr('su-err', 'Fonction requise.');
     if (!email || email.indexOf('@') < 0) return showErr('su-err', 'Email invalide.');
     if (!pwd || pwd.length < 8) return showErr('su-err', 'Mot de passe : 8 caractères minimum.');
-    if (!role) return showErr('su-err', 'Sélectionnez un rôle.');
-    if (!db()) return showErr('su-err', 'Base de données non initialisée.');
+    if (!role) return showErr('su-err', 'Sélectionnez votre rôle.');
+    if (!db()) return showErr('su-err', 'Base de données non initialisée. Rechargez la page.');
 
     setBtn('su-btn', 'Création...', true);
     log('Signup:', email, 'role=' + role);
 
     db().auth.signUp({
       email: email,
-      password: pwd,
-      options: { emailRedirectTo: window.location.origin, data: { nom: nom, role: role } }
+      password: pwd
     }).then(function(r) {
       if (r.error) {
         setBtn('su-btn', 'Créer mon compte', false);
         var msg = r.error.message;
-        if (msg.indexOf('already registered') >= 0 || msg.indexOf('User already') >= 0) {
+        if (msg.indexOf('already registered') >= 0 || msg.indexOf('already been registered') >= 0) {
           msg = 'Cet email a déjà un compte. Connectez-vous.';
         }
         return showErr('su-err', msg);
@@ -16290,52 +16334,47 @@ function cosDoInvite() {
         return showErr('su-err', 'Erreur création compte.');
       }
       var uid = r.data.user.id;
+      log('Auth user créé:', uid);
 
-      // Créer le profil
-      db().from('profiles').upsert({
-        id: uid, email: email, nom: nom, role: role, onboarded: true
-      }, { onConflict: 'id' }).then(function(pr) {
+      // Insérer le profil complet
+      db().from('profiles').insert({
+        id: uid,
+        email: email,
+        nom: nom,
+        prenom: prenom,
+        entreprise: entreprise,
+        fonction: fonction,
+        telephone: tel || null,
+        role: role,
+        onboarded: true
+      }).then(function(pr) {
         if (pr.error) {
-          log('Erreur profil (non bloquant):', pr.error.message);
-          // On continue même si profil échoue (RLS peut bloquer mais user est créé)
+          log('Erreur profil:', pr.error.message);
+          setBtn('su-btn', 'Créer mon compte', false);
+          return showErr('su-err', 'Erreur profil : ' + pr.error.message);
         }
+        log('Profil créé:', email);
 
-        // Cas 1 : session immédiate (confirm email désactivé)
-        if (r.data.session) {
-          setBtn('su-btn', '✓', false);
-          window._USER = { id: uid, email: email, nom: nom, role: role };
-          setTimeout(function() { routeToDashboard(role); }, 400);
-          return;
-        }
+        window._USER = { id: uid, email: email, nom: nom, prenom: prenom, entreprise: entreprise, fonction: fonction, role: role };
+        window._COS_UID = uid;
+        window._COS_PROFILE = window._USER;
 
-        // Cas 2 : confirmation email requise
         setBtn('su-btn', '✓ Compte créé', false);
-        var fu = $('form-signup');
-        if (fu) {
-          fu.innerHTML = '<div style="text-align:center;padding:20px 0">' +
-            '<div style="font-size:38px;margin-bottom:12px">📧</div>' +
-            '<div style="font-size:18px;color:#fff;margin-bottom:8px;font-family:Instrument Serif,serif">Vérifiez votre email</div>' +
-            '<div style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.7;margin-bottom:18px">Un email de confirmation a été envoyé à <b>' + email + '</b>.<br>Cliquez sur le lien pour activer votre compte.</div>' +
-            '<div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:14px;padding:10px;background:rgba(255,255,255,.04);border-radius:8px">⚠ Si vous ne recevez pas l\'email (limite Supabase gratuite), demandez à votre admin de désactiver la confirmation email dans Supabase → Auth.</div>' +
-            '<button onclick="authTab(\'signin\')" style="padding:10px 22px;background:#d4880a;border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Aller à la connexion →</button>' +
-          '</div>';
-        }
+        setTimeout(function() {
+          closeOverlay();
+          routeToDashboard(role);
+        }, 500);
       }).catch(function(e) {
-        log('Exception profil:', e);
-        // On continue quand même
-        if (r.data.session) {
-          window._USER = { id: uid, email: email, nom: nom, role: role };
-          setTimeout(function() { routeToDashboard(role); }, 400);
-        }
+        setBtn('su-btn', 'Créer mon compte', false);
+        showErr('su-err', 'Erreur : ' + (e.message || e));
       });
     }).catch(function(e) {
       setBtn('su-btn', 'Créer mon compte', false);
       showErr('su-err', 'Erreur : ' + (e.message || e));
     });
   };
-  window.cosSignUp = window.doSignUp;
 
-  // ── SIGN IN ─────────────────────────────────────────────────────────
+  // ── SIGN IN ────────────────────────────────────────────────────────
   window.doSignIn = function() {
     var email = ($('si-email').value || '').trim().toLowerCase();
     var pwd = $('si-pwd').value || '';
@@ -16348,85 +16387,82 @@ function cosDoInvite() {
     setBtn('si-btn', 'Connexion...', true);
     log('Signin:', email);
 
-    db().auth.signInWithPassword({ email: email, password: pwd })
-      .then(function(r) {
-        if (r.error) {
-          setBtn('si-btn', 'Se connecter', false);
-          var msg = r.error.message;
-          if (msg.indexOf('Invalid login') >= 0) msg = 'Email ou mot de passe incorrect.';
-          if (msg.indexOf('Email not confirmed') >= 0) msg = 'Email non confirmé. Vérifiez votre boîte mail.';
-          return showErr('si-err', msg);
-        }
-        if (!r.data || !r.data.user) {
-          setBtn('si-btn', 'Se connecter', false);
-          return showErr('si-err', 'Erreur connexion.');
-        }
-
-        log('Connecté:', r.data.user.email);
-        fetchProfileAndRoute(r.data.user);
-      }).catch(function(e) {
+    db().auth.signInWithPassword({ email: email, password: pwd }).then(function(r) {
+      if (r.error) {
         setBtn('si-btn', 'Se connecter', false);
-        showErr('si-err', 'Erreur : ' + (e.message || e));
-      });
+        var msg = r.error.message;
+        if (msg.indexOf('Invalid login') >= 0) msg = 'Email ou mot de passe incorrect.';
+        if (msg.indexOf('Email not confirmed') >= 0) msg = 'Email non confirmé.';
+        return showErr('si-err', msg);
+      }
+      if (!r.data || !r.data.user) {
+        setBtn('si-btn', 'Se connecter', false);
+        return showErr('si-err', 'Erreur connexion.');
+      }
+      log('Connecté:', r.data.user.email);
+      fetchProfileAndRoute(r.data.user);
+    }).catch(function(e) {
+      setBtn('si-btn', 'Se connecter', false);
+      showErr('si-err', 'Erreur : ' + (e.message || e));
+    });
   };
-  window.cosSignIn = window.doSignIn;
 
-  // ── Récupérer profil + router vers dashboard ─────────────────────────
+  // ── Fetch profil + router ──────────────────────────────────────────
   function fetchProfileAndRoute(user) {
-    db().from('profiles').select('*').eq('id', user.id).single()
-      .then(function(r) {
-        var role = 'CCO'; // fallback par défaut
-        var nom = user.email.split('@')[0];
+    db().from('profiles').select('*').eq('id', user.id).single().then(function(r) {
+      if (r.error || !r.data) {
+        log('Profil introuvable:', r.error ? r.error.message : 'null');
+        setBtn('si-btn', 'Se connecter', false);
+        showErr('si-err', 'Profil introuvable. Contactez l\'administrateur.');
+        return;
+      }
+      var p = r.data;
+      window._USER = p;
+      window._COS_UID = user.id;
+      window._COS_PROFILE = p;
 
-        if (r.data) {
-          role = r.data.role || 'CCO';
-          nom = r.data.nom || nom;
-          log('Profil trouvé: role=' + role);
-        } else {
-          log('Pas de profil — fallback role=CCO');
-        }
-
-        window._USER = { id: user.id, email: user.email, nom: nom, role: role };
-        setBtn('si-btn', '✓', false);
-        setTimeout(function() { routeToDashboard(role); }, 400);
-      }).catch(function(e) {
-        log('Erreur profil:', e);
-        // Fallback : router quand même
-        window._USER = { id: user.id, email: user.email, nom: '', role: 'CCO' };
-        setTimeout(function() { routeToDashboard('CCO'); }, 400);
-      });
+      setBtn('si-btn', '✓', false);
+      log('Profil chargé, route vers:', p.role);
+      setTimeout(function() {
+        closeOverlay();
+        routeToDashboard(p.role);
+      }, 300);
+    });
   }
 
-  // ── Router vers le bon dashboard ────────────────────────────────────
+  window.v12HandleAuth = fetchProfileAndRoute;
+
+  // ── Router vers le bon dashboard ───────────────────────────────────
   function routeToDashboard(role) {
-    closeOverlay();
-    log('Route vers:', role);
     var r = (role || 'CCO').toLowerCase();
+    log('Route →', r);
     if (r === 'fournisseur') {
       if (typeof window.enterSupplier === 'function') window.enterSupplier();
       else if (typeof window.showSc === 'function') window.showSc('supplier');
     } else if (r === 'collaborateur' || r === 'collab') {
-      if (typeof window.showSc === 'function') window.showSc('collab');
+      if (typeof window.enterCollab === 'function') window.enterCollab();
+      else if (typeof window.showSc === 'function') window.showSc('collab');
     } else {
       if (typeof window.enterCCO === 'function') window.enterCCO();
       else if (typeof window.showSc === 'function') window.showSc('cco');
     }
   }
 
-  // ── SIGN OUT ─────────────────────────────────────────────────────────
+  // ── SIGN OUT ───────────────────────────────────────────────────────
   window.doSignOut = function() {
     if (!db()) { location.reload(); return; }
     db().auth.signOut().then(function() {
       window._USER = null;
+      window._COS_UID = null;
+      window._COS_PROFILE = null;
       location.reload();
     });
   };
-  window.authSignOut = window.doSignOut;
 
-  // ── BOOTSTRAP : check session existante au chargement ────────────────
+  // ── BOOTSTRAP : session existante → route direct ───────────────────
   function bootstrap() {
-    if (!db()) { log('COS_DB absent, bootstrap annulé'); return; }
-    log('Bootstrap v10 démarré');
+    if (!db()) { log('COS_DB absent'); return; }
+    log('Bootstrap v12 démarré');
 
     db().auth.getSession().then(function(r) {
       var s = r && r.data && r.data.session;
@@ -16434,20 +16470,8 @@ function cosDoInvite() {
         log('Session existante:', s.user.email);
         fetchProfileAndRoute(s.user);
       } else {
-        log('Aucune session → landing');
-        var ov = $('cos-ov'); if (ov) ov.style.display = 'none';
+        log('Pas de session → landing');
         if (typeof window.showSc === 'function') window.showSc('land');
-      }
-    });
-
-    // Listener unique pour les changements d'auth
-    db().auth.onAuthStateChange(function(ev, session) {
-      log('Auth event:', ev);
-      if (ev === 'SIGNED_IN' && session && session.user && !window._USER) {
-        fetchProfileAndRoute(session.user);
-      } else if (ev === 'SIGNED_OUT') {
-        window._USER = null;
-        location.reload();
       }
     });
   }
@@ -16455,10 +16479,10 @@ function cosDoInvite() {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', bootstrap);
   } else {
-    setTimeout(bootstrap, 100);
+    setTimeout(bootstrap, 50);
   }
 
-  log('Module v10 chargé ✓');
+  log('Module v12 chargé ✓');
 })();
 
 </script>
