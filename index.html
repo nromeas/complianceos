@@ -16930,64 +16930,66 @@ function cosDoInvite() {
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  // 1. RENDERER : REGISTRE DES TRAITEMENTS (Art. 30)
+
+  // ════════════════════════════════════════════════════════════════════════
+  // 1. RENDERER : REGISTRE DES TRAITEMENTS (Art. 30) — VERSION 2 (vraies classes)
   // ════════════════════════════════════════════════════════════════════════
   CCO_RENDERERS['rgpd-registre'] = function() {
     var t = document.getElementById('ctab-rgpd-registre');
     if (!t) return;
     var k = dpoCalcKPIs();
+    var couvDPA = Math.round((k.sousTraitantsTotal - k.sousTraitantsSansDPA) / k.sousTraitantsTotal * 100);
 
     t.innerHTML =
-      '<div class="page-header">' +
-        '<div>' +
-          '<div class="page-eyebrow">RGPD · ART. 30</div>' +
-          '<h1 class="page-title">Registre des traitements</h1>' +
-          '<div class="page-subtitle">Cartographie complète des activités de traitement de données personnelles</div>' +
-        '</div>' +
-        '<div style="display:flex;gap:8px">' +
-          '<button class="btn btn-ghost btn-sm" onclick="dpoExportRegistreTraitements()"><span>📄</span> Export PDF CNIL</button>' +
-          '<button class="btn btn-primary btn-sm" onclick="toast(\'Création de traitement — Phase 2\',\'var(--amber)\')"><span>+</span> Nouveau traitement</button>' +
-        '</div>' +
+      '<div class="ph">' +
+        '<div class="ph-eye">RGPD · ART. 30</div>' +
+        '<h1 class="ph-title">Registre des traitements</h1>' +
+        '<div class="ph-sub">Cartographie complète des activités de traitement de données personnelles · Conforme CNIL</div>' +
       '</div>' +
-
-      '<div class="kpi-grid mb16">' +
-        '<div class="kpi-card"><div class="kpi-label">Traitements actifs</div><div class="kpi-value">' + k.traitementsTotal + '</div><div class="kpi-trend kpi-up">Conforme Art. 30</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">Risque élevé</div><div class="kpi-value" style="color:#FCA5A5">' + k.traitementsRisqueHaut + '</div><div class="kpi-trend">AIPD requise</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">Dernière MAJ globale</div><div class="kpi-value" style="font-size:18px">22 avril</div><div class="kpi-trend">Mise à jour mensuelle</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">Couverture sous-traitants</div><div class="kpi-value">' + Math.round((k.sousTraitantsTotal - k.sousTraitantsSansDPA) / k.sousTraitantsTotal * 100) + '%</div><div class="kpi-trend kpi-up">' + (k.sousTraitantsTotal - k.sousTraitantsSansDPA) + '/' + k.sousTraitantsTotal + ' DPA signés</div></div>' +
-      '</div>' +
-
-      '<div class="card mb16">' +
-        '<div class="card-header"><div class="card-title">Filtres</div></div>' +
-        '<div class="card-body">' +
-          '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-            '<button class="btn btn-ghost btn-sm">Tous</button>' +
-            '<button class="btn btn-ghost btn-sm">Risque élevé (3)</button>' +
+      '<div class="pb">' +
+        '<div class="flexb mb20">' +
+          '<div class="g4" style="flex:1">' +
+            kpiBlock(k.traitementsTotal, 'Traitements actifs', 'Conforme Art. 30', 'var(--green)') +
+            kpiBlock(k.traitementsRisqueHaut, 'Risque élevé', 'AIPD requise', 'var(--red)') +
+            kpiBlock('22 avr.', 'Dernière MAJ', 'Mensuelle', 'var(--navy)') +
+            kpiBlock(couvDPA + '%', 'Couverture DPA', (k.sousTraitantsTotal - k.sousTraitantsSansDPA) + '/' + k.sousTraitantsTotal + ' signés', pctColor(couvDPA)) +
+          '</div>' +
+          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
+            '<button class="btn btn-ghost btn-sm" onclick="dpoExportRegistreTraitements()">📄 Export PDF CNIL</button>' +
+            '<button class="btn btn-primary btn-sm" onclick="toast(\'Création de traitement — Phase 2\',\'var(--amber)\')">+ Nouveau</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="card mb20">' +
+          '<div class="fw7 fs13 c-navy mb12">Filtres</div>' +
+          '<div class="flex gap8" style="flex-wrap:wrap">' +
+            '<button class="btn btn-ghost btn-sm">Tous (' + RGPD_TRAITEMENTS.length + ')</button>' +
+            '<button class="btn btn-ghost btn-sm">Risque élevé (' + k.traitementsRisqueHaut + ')</button>' +
             '<button class="btn btn-ghost btn-sm">Données sensibles</button>' +
             '<button class="btn btn-ghost btn-sm">Hors UE</button>' +
             '<button class="btn btn-ghost btn-sm">À mettre à jour</button>' +
           '</div>' +
         '</div>' +
-      '</div>' +
-
-      '<div class="card">' +
-        '<div class="card-header"><div class="card-title">Traitements (' + RGPD_TRAITEMENTS.length + ')</div><div class="card-meta">Dernière revue: 22 avril 2026</div></div>' +
-        '<div class="card-body" style="padding:0">' +
-          '<table class="data-table">' +
+        '<div class="card">' +
+          '<div class="flexb mb14">' +
+            '<div class="fw7 fs13 c-navy">Traitements (' + RGPD_TRAITEMENTS.length + ')</div>' +
+            '<div class="fs11 c-muted">Dernière revue : 22 avril 2026</div>' +
+          '</div>' +
+          '<table class="tbl">' +
             '<thead><tr>' +
-              '<th>ID</th><th>Traitement</th><th>Base légale</th><th>Conservation</th><th>Risque</th><th>Statut</th><th>Dernière MAJ</th><th></th>' +
+              '<th>ID</th><th>Traitement</th><th>Base légale</th><th>Conservation</th><th>Risque</th><th>Statut</th><th>MAJ</th><th></th>' +
             '</tr></thead>' +
             '<tbody>' +
-              RGPD_TRAITEMENTS.map(function(t) {
+              RGPD_TRAITEMENTS.map(function(tr) {
+                var sigClass = tr.risque === 'high' ? 's-r' : tr.risque === 'medium' ? 's-a' : 's-g';
                 return '<tr>' +
-                  '<td style="font-family:DM Mono,monospace;font-size:11px;color:#94A3B8">' + t.id + '</td>' +
-                  '<td><div style="font-weight:600;color:#0C1B35">' + t.nom + '</div><div style="font-size:11px;color:#64748B;margin-top:2px">' + t.finalite + '</div></td>' +
-                  '<td style="font-size:12px">' + t.baseLegale + '</td>' +
-                  '<td style="font-size:12px">' + t.conservation + '</td>' +
-                  '<td><span style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;background:' + riskBg(t.risque) + ';color:' + riskColor(t.risque) + '">' + riskLabel(t.risque) + '</span></td>' +
-                  '<td><span style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;background:rgba(42,122,84,.1);color:' + statusColor(t.statut) + '">' + (t.statut === 'actif' ? 'Actif' : 'Archivé') + '</span></td>' +
-                  '<td style="font-size:11px;color:#64748B">' + t.maj + '</td>' +
-                  '<td><button class="btn btn-ghost btn-sm" onclick="dpoOpenTraitement(\'' + t.id + '\')">Détail →</button></td>' +
+                  '<td class="mono fs11 c-muted">' + tr.id + '</td>' +
+                  '<td><div class="fw7 fs12 c-navy">' + tr.nom + '</div><div class="fs11 c-muted" style="margin-top:2px">' + tr.finalite + '</div></td>' +
+                  '<td class="fs11">' + tr.baseLegale + '</td>' +
+                  '<td class="fs11">' + tr.conservation + '</td>' +
+                  '<td><span class="sig ' + sigClass + '">' + riskLabelDPO(tr.risque) + '</span></td>' +
+                  '<td><span class="sig ' + (tr.statut === 'actif' ? 's-g' : 's-a') + '">' + (tr.statut === 'actif' ? 'Actif' : 'Archivé') + '</span></td>' +
+                  '<td class="fs11 c-muted">' + tr.maj + '</td>' +
+                  '<td><button class="btn btn-ghost btn-sm" onclick="dpoOpenTraitement(\'' + tr.id + '\')">Détail →</button></td>' +
                 '</tr>';
               }).join('') +
             '</tbody>' +
@@ -16997,65 +16999,69 @@ function cosDoInvite() {
   };
 
   // ════════════════════════════════════════════════════════════════════════
-  // 2. RENDERER : REGISTRE DES SOUS-TRAITANTS (Art. 28)
+  // 2. RENDERER : SOUS-TRAITANTS (Art. 28)
   // ════════════════════════════════════════════════════════════════════════
   CCO_RENDERERS['rgpd-soustraitants'] = function() {
     var t = document.getElementById('ctab-rgpd-soustraitants');
     if (!t) return;
     var k = dpoCalcKPIs();
 
-    t.innerHTML =
-      '<div class="page-header">' +
-        '<div>' +
-          '<div class="page-eyebrow">RGPD · ART. 28</div>' +
-          '<h1 class="page-title">Registre des sous-traitants</h1>' +
-          '<div class="page-subtitle">Suivi des accords de traitement et audits annuels</div>' +
-        '</div>' +
-        '<div style="display:flex;gap:8px">' +
-          '<button class="btn btn-ghost btn-sm" onclick="dpoExportSousTraitants()"><span>📄</span> Export PDF</button>' +
-          '<button class="btn btn-primary btn-sm" onclick="ccoTab(\'coverage\')">→ Voir fournisseurs CCO</button>' +
-        '</div>' +
-      '</div>' +
-
-      '<div class="kpi-grid mb16">' +
-        '<div class="kpi-card"><div class="kpi-label">Sous-traitants actifs</div><div class="kpi-value">' + k.sousTraitantsTotal + '</div><div class="kpi-trend kpi-up">Cartographiés</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">DPA signés</div><div class="kpi-value">' + (k.sousTraitantsTotal - k.sousTraitantsSansDPA) + '/' + k.sousTraitantsTotal + '</div><div class="kpi-trend kpi-up">Conforme Art. 28</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">DPA manquants</div><div class="kpi-value" style="color:#FCA5A5">' + k.sousTraitantsSansDPA + '</div><div class="kpi-trend">Action requise</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">Hors UE (avec SCCs)</div><div class="kpi-value">2</div><div class="kpi-trend">Transferts encadrés</div></div>' +
-      '</div>' +
-
-      '<div class="card mb16">' +
-        '<div class="card-header"><div class="card-title">⚠ Alerte : DPA à régulariser</div></div>' +
-        '<div class="card-body">' +
-          '<div style="display:flex;gap:12px;align-items:center;padding:12px;background:rgba(192,80,58,.08);border-left:3px solid #c0503a;border-radius:6px">' +
-            '<div style="font-size:24px">⚠</div>' +
+    var alerteSansDPA = RGPD_SOUSTRAITANTS.filter(function(s){return !s.dpaSigne;});
+    var alertesHTML = '';
+    if (alerteSansDPA.length > 0) {
+      alertesHTML = '<div class="card mb20" style="border-color:var(--red-b)">' +
+        '<div class="fw7 fs13 c-red mb12">⚠ Alerte : DPA à régulariser (' + alerteSansDPA.length + ')</div>' +
+        alerteSansDPA.map(function(s) {
+          return '<div class="flex gap12" style="padding:12px;background:rgba(192,80,58,.05);border-radius:8px;align-items:center">' +
+            '<div style="font-size:22px">⚠</div>' +
             '<div style="flex:1">' +
-              '<div style="font-weight:700;color:#0C1B35">Cabinet Outplacement Y</div>' +
-              '<div style="font-size:12px;color:#64748B">DPA non signé · Service: Accompagnement carrière · Données: CV, projet professionnel</div>' +
+              '<div class="fw7 fs13 c-navy">' + s.nom + '</div>' +
+              '<div class="fs11 c-muted">DPA non signé · ' + s.service + ' · ' + s.dataAuditees + '</div>' +
             '</div>' +
-            '<button class="btn btn-primary btn-sm" onclick="toast(\'Demande de DPA envoyée — Phase 2\',\'var(--amber)\')">Envoyer demande</button>' +
+            '<button class="btn btn-primary btn-sm" onclick="toast(\'Demande DPA envoyée — Phase 2\',\'var(--amber)\')">Envoyer demande</button>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+    }
+
+    t.innerHTML =
+      '<div class="ph">' +
+        '<div class="ph-eye">RGPD · ART. 28</div>' +
+        '<h1 class="ph-title">Registre des sous-traitants</h1>' +
+        '<div class="ph-sub">Suivi des accords de traitement (DPA) et audits annuels</div>' +
+      '</div>' +
+      '<div class="pb">' +
+        '<div class="flexb mb20">' +
+          '<div class="g4" style="flex:1">' +
+            kpiBlock(k.sousTraitantsTotal, 'Sous-traitants actifs', 'Cartographiés', 'var(--navy)') +
+            kpiBlock((k.sousTraitantsTotal - k.sousTraitantsSansDPA) + '/' + k.sousTraitantsTotal, 'DPA signés', 'Conforme Art. 28', 'var(--green)') +
+            kpiBlock(k.sousTraitantsSansDPA, 'DPA manquants', 'Action requise', k.sousTraitantsSansDPA > 0 ? 'var(--red)' : 'var(--green)') +
+            kpiBlock('2', 'Hors UE (avec SCCs)', 'Transferts encadrés', 'var(--amber)') +
+          '</div>' +
+          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
+            '<button class="btn btn-ghost btn-sm" onclick="dpoExportSousTraitants()">📄 Export PDF</button>' +
+            '<button class="btn btn-primary btn-sm" onclick="ccoTab(\'coverage\')">→ Fournisseurs CCO</button>' +
           '</div>' +
         '</div>' +
-      '</div>' +
-
-      '<div class="card">' +
-        '<div class="card-header"><div class="card-title">Sous-traitants (' + RGPD_SOUSTRAITANTS.length + ')</div></div>' +
-        '<div class="card-body" style="padding:0">' +
-          '<table class="data-table">' +
+        alertesHTML +
+        '<div class="card">' +
+          '<div class="fw7 fs13 c-navy mb14">Sous-traitants (' + RGPD_SOUSTRAITANTS.length + ')</div>' +
+          '<table class="tbl">' +
             '<thead><tr>' +
-              '<th>Nom</th><th>Service</th><th>Localisation</th><th>DPA</th><th>Risque</th><th>Dernier audit</th><th>Prochain audit</th><th></th>' +
+              '<th>Nom</th><th>Service</th><th>Localisation</th><th>DPA</th><th>Risque</th><th>Dernier audit</th><th>Prochain</th><th></th>' +
             '</tr></thead>' +
             '<tbody>' +
               RGPD_SOUSTRAITANTS.map(function(s) {
+                var sigClass = s.risque === 'high' ? 's-r' : s.risque === 'medium' ? 's-a' : 's-g';
                 return '<tr>' +
-                  '<td><div style="font-weight:600;color:#0C1B35">' + s.nom + '</div><div style="font-size:11px;color:#64748B">' + (s.certifications || '-') + '</div></td>' +
-                  '<td style="font-size:12px">' + s.service + '</td>' +
-                  '<td style="font-size:12px">' + s.localisation + '</td>' +
-                  '<td>' + (s.dpaSigne ? '<span style="color:#2A7A54;font-weight:700">✓ Signé</span>' : '<span style="color:#c0503a;font-weight:700">✗ Manquant</span>') + '</td>' +
-                  '<td><span style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;background:' + riskBg(s.risque) + ';color:' + riskColor(s.risque) + '">' + riskLabel(s.risque) + '</span></td>' +
-                  '<td style="font-size:11px;color:#64748B">' + s.dernierAudit + '</td>' +
-                  '<td style="font-size:11px;color:#64748B">' + s.prochainAudit + '</td>' +
-                  '<td><button class="btn btn-ghost btn-sm" onclick="toast(\'Détail sous-traitant — Phase 2\',\'var(--amber)\')">Détail →</button></td>' +
+                  '<td><div class="fw7 fs12 c-navy">' + s.nom + '</div><div class="fs11 c-muted">' + (s.certifications || '-') + '</div></td>' +
+                  '<td class="fs11">' + s.service + '</td>' +
+                  '<td class="fs11">' + s.localisation + '</td>' +
+                  '<td>' + (s.dpaSigne ? '<span class="c-green fw7">✓ Signé</span>' : '<span class="c-red fw7">✗ Manquant</span>') + '</td>' +
+                  '<td><span class="sig ' + sigClass + '">' + riskLabelDPO(s.risque) + '</span></td>' +
+                  '<td class="fs11 c-muted">' + s.dernierAudit + '</td>' +
+                  '<td class="fs11 c-muted">' + s.prochainAudit + '</td>' +
+                  '<td><button class="btn btn-ghost btn-sm" onclick="toast(\'Détail — Phase 2\',\'var(--amber)\')">Détail →</button></td>' +
                 '</tr>';
               }).join('') +
             '</tbody>' +
@@ -17072,80 +17078,81 @@ function cosDoInvite() {
     if (!t) return;
     var k = dpoCalcKPIs();
 
+    // Matrice de risques 4×4 : positionner chaque AIPD selon vraisemblance × gravité
+    var matrix = [];
+    for (var v = 4; v >= 1; v--) {
+      var row = [];
+      for (var g = 1; g <= 4; g++) {
+        var aipds = RGPD_AIPD.filter(function(a) { return a.vraisemblance === v && a.gravite === g; });
+        row.push({ vraisemblance: v, gravite: g, aipds: aipds });
+      }
+      matrix.push(row);
+    }
+
+    function cellColor(v, g) {
+      var prod = v * g;
+      if (prod >= 12) return 'rgba(192,80,58,.6)';
+      if (prod >= 8) return 'rgba(192,80,58,.35)';
+      if (prod >= 5) return 'rgba(212,136,10,.3)';
+      return 'rgba(42,122,84,.2)';
+    }
+
     t.innerHTML =
-      '<div class="page-header">' +
-        '<div>' +
-          '<div class="page-eyebrow">RGPD · ANALYSE D\'IMPACT</div>' +
-          '<h1 class="page-title">AIPD / DPIA</h1>' +
-          '<div class="page-subtitle">Analyses d\'impact sur la protection des données — Méthodologie CNIL</div>' +
-        '</div>' +
-        '<div style="display:flex;gap:8px">' +
-          '<button class="btn btn-ghost btn-sm" onclick="dpoExportAIPD()"><span>📄</span> Export PDF</button>' +
-          '<button class="btn btn-primary btn-sm" onclick="dpoOpenAIPDWizard()">+ Nouvelle AIPD</button>' +
-        '</div>' +
+      '<div class="ph">' +
+        '<div class="ph-eye">RGPD · ANALYSE D\'IMPACT</div>' +
+        '<h1 class="ph-title">AIPD / DPIA</h1>' +
+        '<div class="ph-sub">Analyses d\'impact sur la protection des données — Méthodologie CNIL</div>' +
       '</div>' +
-
-      '<div class="kpi-grid mb16">' +
-        '<div class="kpi-card"><div class="kpi-label">AIPD validées</div><div class="kpi-value">' + k.aipdValides + '</div><div class="kpi-trend kpi-up">Documentation à jour</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">AIPD en cours</div><div class="kpi-value" style="color:#FCD34D">' + k.aipdEnCours + '</div><div class="kpi-trend">À finaliser</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">Consultations CNIL</div><div class="kpi-value">1</div><div class="kpi-trend">Reconnaissance faciale</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">Délai moyen finalisation</div><div class="kpi-value">22j</div><div class="kpi-trend kpi-up">vs 30j cible</div></div>' +
-      '</div>' +
-
-      '<div class="card mb16">' +
-        '<div class="card-header"><div class="card-title">Matrice de risques (vraisemblance × gravité)</div></div>' +
-        '<div class="card-body">' +
-          '<div style="display:grid;grid-template-columns:80px repeat(4,1fr);gap:6px;font-size:11px">' +
-            '<div></div><div style="text-align:center;font-weight:700;color:#64748B">Négligeable</div><div style="text-align:center;font-weight:700;color:#64748B">Limitée</div><div style="text-align:center;font-weight:700;color:#64748B">Importante</div><div style="text-align:center;font-weight:700;color:#64748B">Maximale</div>' +
-            // Vraisemblance 4 (max)
-            '<div style="font-weight:700;color:#64748B;text-align:right">Maximale</div>' +
-            '<div style="height:50px;background:rgba(212,136,10,.2);border-radius:4px"></div>' +
-            '<div style="height:50px;background:rgba(192,80,58,.3);border-radius:4px"></div>' +
-            '<div style="height:50px;background:rgba(192,80,58,.5);border-radius:4px"></div>' +
-            '<div style="height:50px;background:rgba(192,80,58,.8);border-radius:4px"></div>' +
-            // Vraisemblance 3
-            '<div style="font-weight:700;color:#64748B;text-align:right">Importante</div>' +
-            '<div style="height:50px;background:rgba(212,136,10,.15);border-radius:4px"></div>' +
-            '<div style="height:50px;background:rgba(212,136,10,.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#0C1B35">AIPD-006</div>' +
-            '<div style="height:50px;background:rgba(192,80,58,.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#0C1B35">AIPD-002</div>' +
-            '<div style="height:50px;background:rgba(192,80,58,.5);border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff">AIPD-005</div>' +
-            // Vraisemblance 2
-            '<div style="font-weight:700;color:#64748B;text-align:right">Limitée</div>' +
-            '<div style="height:50px;background:rgba(42,122,84,.2);border-radius:4px"></div>' +
-            '<div style="height:50px;background:rgba(212,136,10,.15);border-radius:4px"></div>' +
-            '<div style="height:50px;background:rgba(212,136,10,.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#0C1B35">AIPD-001</div>' +
-            '<div style="height:50px;background:rgba(192,80,58,.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#0C1B35">AIPD-003,004</div>' +
-            // Vraisemblance 1
-            '<div style="font-weight:700;color:#64748B;text-align:right">Négligeable</div>' +
-            '<div style="height:50px;background:rgba(42,122,84,.3);border-radius:4px"></div>' +
-            '<div style="height:50px;background:rgba(42,122,84,.2);border-radius:4px"></div>' +
-            '<div style="height:50px;background:rgba(212,136,10,.15);border-radius:4px"></div>' +
-            '<div style="height:50px;background:rgba(212,136,10,.2);border-radius:4px"></div>' +
-            '<div style="text-align:center;font-size:10px;color:#94A3B8;margin-top:8px;grid-column:1/6">↑ Vraisemblance · → Gravité</div>' +
+      '<div class="pb">' +
+        '<div class="flexb mb20">' +
+          '<div class="g4" style="flex:1">' +
+            kpiBlock(k.aipdValides, 'AIPD validées', 'Documentation à jour', 'var(--green)') +
+            kpiBlock(k.aipdEnCours, 'En cours', 'À finaliser', 'var(--amber)') +
+            kpiBlock('1', 'Consultations CNIL', 'Reconnaissance faciale', 'var(--red)') +
+            kpiBlock('22j', 'Délai moyen', 'vs 30j cible', 'var(--green)') +
+          '</div>' +
+          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
+            '<button class="btn btn-ghost btn-sm" onclick="dpoExportAIPD()">📄 Export PDF</button>' +
+            '<button class="btn btn-primary btn-sm" onclick="dpoOpenAIPDWizard()">+ Nouvelle AIPD</button>' +
           '</div>' +
         '</div>' +
-      '</div>' +
-
-      '<div class="card">' +
-        '<div class="card-header"><div class="card-title">AIPD (' + RGPD_AIPD.length + ')</div></div>' +
-        '<div class="card-body" style="padding:0">' +
-          '<table class="data-table">' +
+        '<div class="card mb20">' +
+          '<div class="fw7 fs13 c-navy mb14">Matrice de risques (vraisemblance × gravité)</div>' +
+          '<div style="display:grid;grid-template-columns:90px repeat(4,1fr);gap:6px;font-size:11px;max-width:680px">' +
+            '<div></div>' +
+            '<div style="text-align:center;font-weight:700;color:var(--steel)">Négligeable</div>' +
+            '<div style="text-align:center;font-weight:700;color:var(--steel)">Limitée</div>' +
+            '<div style="text-align:center;font-weight:700;color:var(--steel)">Importante</div>' +
+            '<div style="text-align:center;font-weight:700;color:var(--steel)">Maximale</div>' +
+            matrix.map(function(row) {
+              var labelV = row[0].vraisemblance === 4 ? 'Maximale' : row[0].vraisemblance === 3 ? 'Importante' : row[0].vraisemblance === 2 ? 'Limitée' : 'Négligeable';
+              return '<div style="font-weight:700;color:var(--steel);text-align:right;align-self:center">' + labelV + '</div>' +
+                row.map(function(cell) {
+                  var content = cell.aipds.length > 0 ? cell.aipds.map(function(a){return a.id.replace('AIPD-','');}).join(', ') : '';
+                  return '<div style="height:54px;background:' + cellColor(cell.vraisemblance, cell.gravite) + ';border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;color:' + (cell.vraisemblance * cell.gravite >= 12 ? '#fff' : 'var(--navy)') + ';font-size:10px">' + content + '</div>';
+                }).join('');
+            }).join('') +
+            '<div style="grid-column:1/6;text-align:center;font-size:10px;color:var(--muted);margin-top:8px">↑ Vraisemblance · → Gravité</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="card">' +
+          '<div class="fw7 fs13 c-navy mb14">AIPD (' + RGPD_AIPD.length + ')</div>' +
+          '<table class="tbl">' +
             '<thead><tr>' +
-              '<th>ID</th><th>Traitement</th><th>Vraisemblance</th><th>Gravité</th><th>Mesures</th><th>Statut</th><th>Décision</th><th></th>' +
+              '<th>ID</th><th>Traitement</th><th>Vrais.</th><th>Gravité</th><th>Mesures</th><th>Statut</th><th>Décision</th><th></th>' +
             '</tr></thead>' +
             '<tbody>' +
               RGPD_AIPD.map(function(a) {
-                var statutBg = a.statut === 'validée' ? 'rgba(42,122,84,.15)' : a.statut === 'en_cours' ? 'rgba(212,136,10,.15)' : 'rgba(192,80,58,.15)';
-                var statutColor = a.statut === 'validée' ? '#2A7A54' : a.statut === 'en_cours' ? '#A06A0E' : '#A03B25';
-                var statutLabel = a.statut === 'validée' ? '✓ Validée' : a.statut === 'en_cours' ? '⏳ En cours' : '⚠ ' + a.statut;
+                var sigClass = a.statut === 'validée' ? 's-g' : a.statut === 'en_cours' ? 's-a' : 's-r';
+                var label = a.statut === 'validée' ? '✓ Validée' : a.statut === 'en_cours' ? '⏳ En cours' : '⚠ ' + a.statut;
                 return '<tr>' +
-                  '<td style="font-family:DM Mono,monospace;font-size:11px;color:#94A3B8">' + a.id + '</td>' +
-                  '<td style="font-weight:600;color:#0C1B35">' + a.traitement + '</td>' +
+                  '<td class="mono fs11 c-muted">' + a.id + '</td>' +
+                  '<td class="fw7 fs12 c-navy">' + a.traitement + '</td>' +
                   '<td>' + a.vraisemblance + '/4</td>' +
                   '<td>' + a.gravite + '/4</td>' +
-                  '<td>' + a.mesures + ' identifiées</td>' +
-                  '<td><span style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;background:' + statutBg + ';color:' + statutColor + '">' + statutLabel + '</span></td>' +
-                  '<td style="font-size:11px;color:#475569;max-width:280px">' + a.decision + '</td>' +
+                  '<td>' + a.mesures + '</td>' +
+                  '<td><span class="sig ' + sigClass + '">' + label + '</span></td>' +
+                  '<td class="fs11" style="max-width:280px">' + a.decision + '</td>' +
                   '<td><button class="btn btn-ghost btn-sm" onclick="dpoOpenAIPDDetail(\'' + a.id + '\')">Détail →</button></td>' +
                 '</tr>';
               }).join('') +
@@ -17156,67 +17163,69 @@ function cosDoInvite() {
   };
 
   // ════════════════════════════════════════════════════════════════════════
-  // 4. RENDERER : DROITS DES PERSONNES (Art. 15-22)
+  // 4. RENDERER : DROITS DES PERSONNES
   // ════════════════════════════════════════════════════════════════════════
   CCO_RENDERERS['rgpd-droits'] = function() {
     var t = document.getElementById('ctab-rgpd-droits');
     if (!t) return;
     var k = dpoCalcKPIs();
 
+    var typeCounts = {};
+    RGPD_DROITS.forEach(function(d) {
+      typeCounts[d.type] = (typeCounts[d.type] || 0) + 1;
+    });
+
     t.innerHTML =
-      '<div class="page-header">' +
-        '<div>' +
-          '<div class="page-eyebrow">RGPD · ART. 15-22</div>' +
-          '<h1 class="page-title">Droits des personnes</h1>' +
-          '<div class="page-subtitle">Inbox des requêtes : accès, rectification, effacement, opposition, portabilité</div>' +
-        '</div>' +
-        '<div style="display:flex;gap:8px">' +
-          '<button class="btn btn-ghost btn-sm" onclick="dpoExportDroits()"><span>📄</span> Export statistiques</button>' +
-          '<button class="btn btn-primary btn-sm" onclick="toast(\'Réception requête — Phase 2\',\'var(--amber)\')">+ Nouvelle requête</button>' +
-        '</div>' +
+      '<div class="ph">' +
+        '<div class="ph-eye">RGPD · ART. 15-22</div>' +
+        '<h1 class="ph-title">Droits des personnes</h1>' +
+        '<div class="ph-sub">Inbox des requêtes : accès, rectification, effacement, opposition, portabilité · Délai légal 30 jours</div>' +
       '</div>' +
-
-      '<div class="kpi-grid mb16">' +
-        '<div class="kpi-card"><div class="kpi-label">En cours</div><div class="kpi-value">' + k.droitsEnCours + '</div><div class="kpi-trend">À traiter sous 30j</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">⚠ Urgentes (J-10)</div><div class="kpi-value" style="color:#FCA5A5">' + k.droitsUrgents + '</div><div class="kpi-trend">Priorité haute</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">Total 12 mois</div><div class="kpi-value">' + k.droitsTotal12mois + '</div><div class="kpi-trend kpi-up">+18% vs N-1</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">Délai moyen réponse</div><div class="kpi-value">' + k.delaiMoyenJours + 'j</div><div class="kpi-trend kpi-up">Cible: 30j max</div></div>' +
-      '</div>' +
-
-      '<div class="card mb16">' +
-        '<div class="card-header"><div class="card-title">Répartition par type</div></div>' +
-        '<div class="card-body">' +
-          '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;text-align:center">' +
-            '<div style="padding:14px;background:rgba(15,26,46,.04);border-radius:8px"><div style="font-size:24px;font-weight:800;color:#0C1B35">' + RGPD_DROITS.filter(d=>d.type==='acces').length + '</div><div style="font-size:11px;color:#64748B;margin-top:4px">Accès</div></div>' +
-            '<div style="padding:14px;background:rgba(15,26,46,.04);border-radius:8px"><div style="font-size:24px;font-weight:800;color:#0C1B35">' + RGPD_DROITS.filter(d=>d.type==='effacement').length + '</div><div style="font-size:11px;color:#64748B;margin-top:4px">Effacement</div></div>' +
-            '<div style="padding:14px;background:rgba(15,26,46,.04);border-radius:8px"><div style="font-size:24px;font-weight:800;color:#0C1B35">' + RGPD_DROITS.filter(d=>d.type==='rectification').length + '</div><div style="font-size:11px;color:#64748B;margin-top:4px">Rectification</div></div>' +
-            '<div style="padding:14px;background:rgba(15,26,46,.04);border-radius:8px"><div style="font-size:24px;font-weight:800;color:#0C1B35">' + RGPD_DROITS.filter(d=>d.type==='opposition').length + '</div><div style="font-size:11px;color:#64748B;margin-top:4px">Opposition</div></div>' +
-            '<div style="padding:14px;background:rgba(15,26,46,.04);border-radius:8px"><div style="font-size:24px;font-weight:800;color:#0C1B35">' + RGPD_DROITS.filter(d=>d.type==='portabilite').length + '</div><div style="font-size:11px;color:#64748B;margin-top:4px">Portabilité</div></div>' +
+      '<div class="pb">' +
+        '<div class="flexb mb20">' +
+          '<div class="g4" style="flex:1">' +
+            kpiBlock(k.droitsEnCours, 'En cours', 'À traiter sous 30j', k.droitsEnCours > 0 ? 'var(--amber)' : 'var(--green)') +
+            kpiBlock(k.droitsUrgents, '⚠ Urgentes (J-10)', 'Priorité haute', k.droitsUrgents > 0 ? 'var(--red)' : 'var(--green)') +
+            kpiBlock(k.droitsTotal12mois, 'Total 12 mois', '+18% vs N-1', 'var(--navy)') +
+            kpiBlock(k.delaiMoyenJours + 'j', 'Délai moyen', 'Cible: 30j max', 'var(--green)') +
+          '</div>' +
+          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
+            '<button class="btn btn-ghost btn-sm" onclick="dpoExportDroits()">📄 Export PDF</button>' +
+            '<button class="btn btn-primary btn-sm" onclick="toast(\'Réception requête — Phase 2\',\'var(--amber)\')">+ Requête</button>' +
           '</div>' +
         '</div>' +
-      '</div>' +
-
-      '<div class="card">' +
-        '<div class="card-header"><div class="card-title">Inbox (' + RGPD_DROITS.length + ')</div><div class="card-meta">Triées par priorité et échéance</div></div>' +
-        '<div class="card-body" style="padding:0">' +
-          '<table class="data-table">' +
+        '<div class="card mb20">' +
+          '<div class="fw7 fs13 c-navy mb14">Répartition par type</div>' +
+          '<div class="g4">' +
+            kpiBlock(typeCounts['acces'] || 0, 'Accès', '', 'var(--navy)') +
+            kpiBlock(typeCounts['effacement'] || 0, 'Effacement', '', 'var(--navy)') +
+            kpiBlock(typeCounts['rectification'] || 0, 'Rectification', '', 'var(--navy)') +
+            kpiBlock((typeCounts['opposition'] || 0) + ' / ' + (typeCounts['portabilite'] || 0), 'Opposition / Portabilité', '', 'var(--navy)') +
+          '</div>' +
+        '</div>' +
+        '<div class="card">' +
+          '<div class="flexb mb14">' +
+            '<div class="fw7 fs13 c-navy">Inbox (' + RGPD_DROITS.length + ')</div>' +
+            '<div class="fs11 c-muted">Triées par priorité et échéance</div>' +
+          '</div>' +
+          '<table class="tbl">' +
             '<thead><tr>' +
               '<th>ID</th><th>Date</th><th>Demandeur</th><th>Type</th><th>Échéance</th><th>Jours restants</th><th>Statut</th><th></th>' +
             '</tr></thead>' +
             '<tbody>' +
               RGPD_DROITS.map(function(d) {
-                var jrColor = d.joursRestants <= 10 && d.statut !== 'cloturee' ? '#c0503a' : (d.joursRestants > 0 ? '#475569' : '#94A3B8');
-                var statutBg = d.statut === 'cloturee' ? 'rgba(42,122,84,.15)' : d.statut === 'urgente' ? 'rgba(192,80,58,.15)' : 'rgba(212,136,10,.15)';
-                var statutCol = d.statut === 'cloturee' ? '#2A7A54' : d.statut === 'urgente' ? '#A03B25' : '#A06A0E';
-                var statutLab = d.statut === 'cloturee' ? '✓ Clôturée' : d.statut === 'urgente' ? '⚠ Urgente' : '⏳ En cours';
+                var sigClass = d.statut === 'cloturee' ? 's-g' : d.statut === 'urgente' ? 's-r' : 's-a';
+                var label = d.statut === 'cloturee' ? '✓ Clôturée' : d.statut === 'urgente' ? '⚠ Urgente' : '⏳ En cours';
+                var jrDisplay = d.statut === 'cloturee' ? '-' : d.joursRestants + 'j';
+                var jrClass = (d.joursRestants <= 10 && d.statut !== 'cloturee') ? 'c-red' : 'c-steel';
                 return '<tr>' +
-                  '<td style="font-family:DM Mono,monospace;font-size:11px;color:#94A3B8">' + d.id + '</td>' +
-                  '<td style="font-size:12px">' + d.date + '</td>' +
-                  '<td style="font-weight:600;color:#0C1B35;font-size:13px">' + d.demandeur + '</td>' +
-                  '<td><span style="padding:3px 8px;border-radius:6px;font-size:11px;background:rgba(15,26,46,.06);color:#475569">' + d.type + '</span></td>' +
-                  '<td style="font-size:12px">' + d.echeance + '</td>' +
-                  '<td style="font-weight:700;color:' + jrColor + '">' + (d.statut === 'cloturee' ? '-' : d.joursRestants + 'j') + '</td>' +
-                  '<td><span style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;background:' + statutBg + ';color:' + statutCol + '">' + statutLab + '</span></td>' +
+                  '<td class="mono fs11 c-muted">' + d.id + '</td>' +
+                  '<td class="fs11">' + d.date + '</td>' +
+                  '<td class="fw7 fs12 c-navy">' + d.demandeur + '</td>' +
+                  '<td><span class="sig" style="background:rgba(15,26,46,.06);color:var(--steel)">' + d.type + '</span></td>' +
+                  '<td class="fs11">' + d.echeance + '</td>' +
+                  '<td class="fw7 ' + jrClass + '">' + jrDisplay + '</td>' +
+                  '<td><span class="sig ' + sigClass + '">' + label + '</span></td>' +
                   '<td><button class="btn btn-ghost btn-sm" onclick="dpoOpenDroit(\'' + d.id + '\')">Traiter →</button></td>' +
                 '</tr>';
               }).join('') +
@@ -17225,6 +17234,9 @@ function cosDoInvite() {
         '</div>' +
       '</div>';
   };
+
+  // Helper local pour ne pas conflicter avec riskLabel global existant
+  function riskLabelDPO(r) { return r === 'high' ? 'Élevé' : r === 'medium' ? 'Moyen' : 'Faible'; }
 
   // ════════════════════════════════════════════════════════════════════════
   // ACTIONS / DETAIL
