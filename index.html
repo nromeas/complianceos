@@ -1123,6 +1123,7 @@ setInterval(function() {
     </div>
   </div>
 </div>
+
 <footer style="background:var(--navy);padding:22px 48px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,.07)"><div class="flex gap10"><div class="sb-logo" style="background:var(--navy2);width:24px;height:24px;border-radius:6px;font-size:12px">C</div><span class="fs12" style="color:rgba(255,255,255,.3)">ComplianceOS — Hébergé en France · RGPD · SOC2</span></div><div class="fs11" style="color:rgba(255,255,255,.2)">© 2026 ComplianceOS SAS</div></footer>
 </div>
 </div>
@@ -17529,249 +17530,665 @@ function cosDoInvite() {
 
 
 /* ══════════════════════════════════════════════════════════════════════════
-   COMPLIANCEOS — MODULE CONTRÔLE INTERNE (IC)
-   15 contrôles en mode SHOWCASE — utilise les classes CSS existantes
-   Bloc A: DOA, SOD, PR/PO, Contrats, Exceptions
-   Bloc B: Clôture, Réconciliations, Inventaires, Recouvrement, Cash
-   Bloc C: Accès SI, Master data, ITGC, Sensitive transactions, BCP/DRP
+   COMPLIANCEOS — ENRICHISSEMENT DPO v2 (Copilot + Auto-détection)
+   - Enrichit AIPD existante : IA Copilot + Auto-détection
+   - Enrichit Droits existants : IA Copilot + Auto-détection
+   - Crée Violations 72h : module complet avec IA Copilot + Auto-détection
    ══════════════════════════════════════════════════════════════════════════ */
 (function() {
   'use strict';
 
   // ════════════════════════════════════════════════════════════════════════
-  // DONNÉES MOCK
+  // DONNÉES MOCK : Violations RGPD
   // ════════════════════════════════════════════════════════════════════════
-
-  // 1. DOA — Matrice de délégation
-  window.IC_DOA = [
-    { categorie: 'CAPEX', l1: '0-25K€', l2: '25-100K€', l3: '100-500K€', l4: '500K€-2M€', l5: '>2M€', validateurs: { l1: 'Manager', l2: 'Directeur BU', l3: 'CFO', l4: 'CEO', l5: 'Conseil' } },
-    { categorie: 'OPEX', l1: '0-10K€', l2: '10-50K€', l3: '50-250K€', l4: '250K€-1M€', l5: '>1M€', validateurs: { l1: 'Manager', l2: 'Directeur BU', l3: 'CFO', l4: 'CEO', l5: 'CEO+CFO' } },
-    { categorie: 'Commercial', l1: '0-50K€', l2: '50-250K€', l3: '250K€-1M€', l4: '1-5M€', l5: '>5M€', validateurs: { l1: 'Sales Manager', l2: 'CCO', l3: 'CRO', l4: 'CEO', l5: 'CEO+Conseil' } },
-    { categorie: 'RH', l1: 'Embauche < 60K€', l2: '60-100K€', l3: '100-150K€', l4: '150-300K€', l5: 'Cadre dirigeant', validateurs: { l1: 'Manager', l2: 'DRH', l3: 'CHRO', l4: 'CEO', l5: 'CEO+Conseil' } },
-    { categorie: 'Contrats / Partenariats', l1: 'Standard < 50K€', l2: '50-200K€', l3: '200K€-1M€', l4: '1-5M€', l5: 'Stratégique', validateurs: { l1: 'Legal', l2: 'GC', l3: 'CFO+GC', l4: 'CEO', l5: 'Conseil' } }
-  ];
-
-  // 2. SOD — Matrice incompatibilités
-  window.IC_SOD = [
-    { id: 'SOD-001', risque: 'Création fournisseur + Validation paiement', criticite: 'high', statut: 'controle', impact: 'Fraude paiement fictif', mitigation: '4-eyes principle, alerte automatique' },
-    { id: 'SOD-002', risque: 'Saisie commande + Réception marchandise', criticite: 'high', statut: 'violation', impact: 'Vol non détecté', mitigation: 'Séparation magasinier vs acheteur' },
-    { id: 'SOD-003', risque: 'Note de frais + Approbation', criticite: 'medium', statut: 'controle', impact: 'Frais fictifs', mitigation: 'Workflow N+1 obligatoire' },
-    { id: 'SOD-004', risque: 'Création client + Octroi limite crédit', criticite: 'high', statut: 'controle', impact: 'Crédit excessif client risqué', mitigation: 'Comité crédit' },
-    { id: 'SOD-005', risque: 'Saisie écriture + Clôture comptable', criticite: 'medium', statut: 'controle', impact: 'Manipulation résultat', mitigation: 'Reviewer indépendant' },
-    { id: 'SOD-006', risque: 'Admin SI + Audit logs', criticite: 'high', statut: 'violation', impact: 'Effacement de traces', mitigation: 'SIEM externe + log immutable' },
-    { id: 'SOD-007', risque: 'Trésorerie + Réconciliation bancaire', criticite: 'high', statut: 'controle', impact: 'Détournement fonds', mitigation: 'Réconciliation par compta' },
-    { id: 'SOD-008', risque: 'Paie : saisie + validation + virement', criticite: 'high', statut: 'controle', impact: 'Salaires fictifs', mitigation: '3-tier validation + audit RH' }
-  ];
-
-  // 3. PR/PO — Workflow
-  window.IC_PRPO = [
-    { id: 'PR-2026-0142', demandeur: 'M. Dupont (Achats)', montant: 45000, statut: 'pending_l3', date: '2026-04-22', categorie: 'OPEX', fournisseur: 'TechSupply SAS' },
-    { id: 'PR-2026-0141', demandeur: 'Mme Martin (R&D)', montant: 285000, statut: 'pending_l4', date: '2026-04-20', categorie: 'CAPEX', fournisseur: 'Equipement Indus' },
-    { id: 'PR-2026-0140', demandeur: 'M. Lefebvre (Marketing)', montant: 18000, statut: 'approved', date: '2026-04-18', categorie: 'OPEX', fournisseur: 'AgenceCom Digital' },
-    { id: 'PR-2026-0139', demandeur: 'Mme Bernard (IT)', montant: 67500, statut: 'approved', date: '2026-04-15', categorie: 'CAPEX', fournisseur: 'Microsoft' },
-    { id: 'PR-2026-0138', demandeur: 'M. Petit (Ops)', montant: 1250000, statut: 'pending_l5', date: '2026-04-12', categorie: 'CAPEX', fournisseur: 'Global Industrial' },
-    { id: 'PR-2026-0137', demandeur: 'M. Garcia (Commercial)', montant: 32000, statut: 'rejected', date: '2026-04-10', categorie: 'Commercial', fournisseur: 'EventCo' },
-    { id: 'PR-2026-0136', demandeur: 'Mme Roux (HR)', montant: 95000, statut: 'approved', date: '2026-04-08', categorie: 'RH', fournisseur: 'TalentForce Recruiting' },
-    { id: 'PR-2026-0135', demandeur: 'M. Dubois (Legal)', montant: 145000, statut: 'approved', date: '2026-04-05', categorie: 'Contrats', fournisseur: 'Cabinet Lambert & Co' }
-  ];
-
-  // 4. Contrats
-  window.IC_CONTRATS = [
-    { id: 'CT-2026-018', objet: 'Refonte SI — Phase 2', valeur: 850000, statut: 'en_negociation', risque: 'high', circuit: 'Legal → CFO → CEO', date: '2026-04-22' },
-    { id: 'CT-2026-017', objet: 'Bail commercial showroom', valeur: 240000, statut: 'signe', risque: 'medium', circuit: 'Legal → CFO', date: '2026-04-15' },
-    { id: 'CT-2026-016', objet: 'Maintenance équipements', valeur: 145000, statut: 'signe', risque: 'low', circuit: 'Legal → BU', date: '2026-04-10' },
-    { id: 'CT-2026-015', objet: 'Partenariat distributeur LATAM', valeur: 2800000, statut: 'attente_conseil', risque: 'high', circuit: 'Legal → CFO → CEO → Conseil', date: '2026-04-05' },
-    { id: 'CT-2026-014', objet: 'Licence logiciel SaaS RH', valeur: 95000, statut: 'signe', risque: 'low', circuit: 'Legal → DRH', date: '2026-03-28' },
-    { id: 'CT-2026-013', objet: 'Marché public infrastructure', valeur: 1850000, statut: 'attente_signature', risque: 'medium', circuit: 'Legal → CFO → CEO', date: '2026-03-22' }
-  ];
-
-  // 5. Exceptions DOA
-  window.IC_EXCEPTIONS = [
-    { id: 'EX-2026-008', date: '2026-04-22', demandeur: 'Directeur Production', cas: 'Achat urgent pièces détachées', montant: 38000, niveau_normal: 'L2 (Directeur BU)', validation_recue: 'CFO', justification: 'Arrêt de ligne imminent — délai DOA standard incompatible', statut: 'approuve_post' },
-    { id: 'EX-2026-007', date: '2026-04-12', demandeur: 'CRO', cas: 'Remise client stratégique', montant: 125000, niveau_normal: 'L4 (CEO)', validation_recue: 'CEO email', justification: 'Closing fin de trimestre, validation orale CEO formalisée', statut: 'approuve_post' },
-    { id: 'EX-2026-006', date: '2026-03-28', demandeur: 'CTO', cas: 'Renouvellement licence critique', montant: 67000, niveau_normal: 'L2', validation_recue: 'CFO', justification: 'Expiration imminente, validation L2 indisponible', statut: 'approuve_post' },
-    { id: 'EX-2026-005', date: '2026-03-15', demandeur: 'COO', cas: 'Avenant contrat sous-traitance', montant: 215000, niveau_normal: 'L3', validation_recue: 'L4', justification: 'Surenchère niveau par prudence', statut: 'documente' }
-  ];
-
-  // 6. Clôture mensuelle
-  window.IC_CLOTURE = [
-    { id: 'CL-001', etape: 'Coupure fournisseurs', owner: 'Compta fournisseurs', deadline_jour: 'J+1', statut: 'fait', risque: 'low' },
-    { id: 'CL-002', etape: 'Coupure clients & facturation', owner: 'Compta clients', deadline_jour: 'J+1', statut: 'fait', risque: 'low' },
-    { id: 'CL-003', etape: 'Saisie OD diverses', owner: 'Compta générale', deadline_jour: 'J+2', statut: 'fait', risque: 'medium' },
-    { id: 'CL-004', etape: 'Réconciliations bancaires', owner: 'Trésorerie', deadline_jour: 'J+2', statut: 'fait', risque: 'high' },
-    { id: 'CL-005', etape: 'Provisions & accruals', owner: 'Contrôleur de gestion', deadline_jour: 'J+3', statut: 'en_cours', risque: 'high' },
-    { id: 'CL-006', etape: 'Stocks & inventaires', owner: 'Compta industrielle', deadline_jour: 'J+3', statut: 'en_cours', risque: 'medium' },
-    { id: 'CL-007', etape: 'Consolidation filiales', owner: 'Direction consolidation', deadline_jour: 'J+4', statut: 'a_faire', risque: 'medium' },
-    { id: 'CL-008', etape: 'Reporting CFO', owner: 'FP&A', deadline_jour: 'J+5', statut: 'a_faire', risque: 'low' },
-    { id: 'CL-009', etape: 'Revue analytique CFO', owner: 'CFO', deadline_jour: 'J+5', statut: 'a_faire', risque: 'high' }
-  ];
-
-  // 7. Réconciliations
-  window.IC_RECONCILIATIONS = [
-    { id: 'REC-001', type: 'Banque BNP — Compte courant', frequence: 'Quotidienne', dernier: '2026-04-26', ecart: 0, statut: 'ok' },
-    { id: 'REC-002', type: 'Banque BNP — Compte trésorerie', frequence: 'Quotidienne', dernier: '2026-04-26', ecart: 0, statut: 'ok' },
-    { id: 'REC-003', type: 'Banque SG — Compte courant', frequence: 'Quotidienne', dernier: '2026-04-26', ecart: 1245, statut: 'a_investiguer' },
-    { id: 'REC-004', type: 'Comptes clients (auxiliaire/général)', frequence: 'Mensuelle', dernier: '2026-03-31', ecart: 0, statut: 'ok' },
-    { id: 'REC-005', type: 'Comptes fournisseurs (auxiliaire/général)', frequence: 'Mensuelle', dernier: '2026-03-31', ecart: 8540, statut: 'a_investiguer' },
-    { id: 'REC-006', type: 'Stocks (théorique vs comptable)', frequence: 'Mensuelle', dernier: '2026-03-31', ecart: -2150, statut: 'documente' },
-    { id: 'REC-007', type: 'Intercos filiales', frequence: 'Mensuelle', dernier: '2026-03-31', ecart: 0, statut: 'ok' },
-    { id: 'REC-008', type: 'Cartes corporate', frequence: 'Mensuelle', dernier: '2026-03-31', ecart: 320, statut: 'ok' }
-  ];
-
-  // 8. Inventaires
-  window.IC_INVENTAIRES = [
-    { id: 'INV-2026-Q1', site: 'Entrepôt principal', date: '2026-03-28', perimetre: 'Stocks finis + composants', ecart_pct: 0.8, ecart_eur: 24500, statut: 'documente' },
-    { id: 'INV-2026-Q1-B', site: 'Magasin showroom', date: '2026-03-25', perimetre: 'Pièces démos', ecart_pct: 2.3, ecart_eur: 8200, statut: 'investigation' },
-    { id: 'INV-2025-Q4', site: 'Entrepôt principal', date: '2025-12-15', perimetre: 'Annuel complet', ecart_pct: 1.1, ecart_eur: 38000, statut: 'cloture' },
-    { id: 'INV-2025-Q4-B', site: 'Magasin showroom', date: '2025-12-12', perimetre: 'Annuel complet', ecart_pct: 1.8, ecart_eur: 12500, statut: 'cloture' },
-    { id: 'INV-2025-Q3', site: 'Filiale Italie', date: '2025-09-28', perimetre: 'Stocks complets', ecart_pct: 3.2, ecart_eur: 45000, statut: 'cloture' }
-  ];
-
-  // 9. Recouvrement
-  window.IC_RECOUVREMENT = [
-    { id: 'CL-2026-V01', client: 'Maison Dubois & Co', montant: 145000, dso: 95, escalade: 'mise_en_demeure', provision: false, statut: 'litige' },
-    { id: 'CL-2026-V02', client: 'Distributeur Asia Pacific', montant: 285000, dso: 75, escalade: 'rappel_2', provision: false, statut: 'relance' },
-    { id: 'CL-2026-V03', client: 'Boutique Genève SA', montant: 42000, dso: 60, escalade: 'rappel_1', provision: false, statut: 'relance' },
-    { id: 'CL-2026-V04', client: 'Retailer USA Corp', montant: 380000, dso: 120, escalade: 'contentieux', provision: true, statut: 'douteux' },
-    { id: 'CL-2026-V05', client: 'Franchisé Dubaï', montant: 95000, dso: 45, escalade: 'rappel_1', provision: false, statut: 'relance' },
-    { id: 'CL-2026-V06', client: 'Concept Store Milan', montant: 28000, dso: 35, escalade: 'aucune', provision: false, statut: 'normal' }
-  ];
-
-  // 10. Cash management
-  window.IC_CASH = [
-    { id: 'CASH-001', controle: 'Limite quotidienne décaissement', seuil: '500K€', dernier_test: '2026-04-25', statut: 'ok', alerte: 'Dépassement = blocage automatique' },
-    { id: 'CASH-002', controle: 'Double signature > 100K€', seuil: '100K€', dernier_test: '2026-04-26', statut: 'ok', alerte: '4-eyes principle obligatoire' },
-    { id: 'CASH-003', controle: 'Position quotidienne consolidée', seuil: 'Daily', dernier_test: '2026-04-26', statut: 'ok', alerte: 'CFO + Trésorier' },
-    { id: 'CASH-004', controle: 'Concentration dépôts (1 banque max 30%)', seuil: '30%', dernier_test: '2026-04-25', statut: 'warning', alerte: 'BNP à 32% — diversifier' },
-    { id: 'CASH-005', controle: 'Couverture FX positions ouvertes', seuil: '> 1M€', dernier_test: '2026-04-22', statut: 'ok', alerte: 'Hedging policy' },
-    { id: 'CASH-006', controle: 'Test signatures bancaires', seuil: 'Trimestriel', dernier_test: '2026-04-15', statut: 'ok', alerte: 'Mise à jour pouvoirs annuelle' }
-  ];
-
-  // 11. Accès SI / IAM
-  window.IC_IAM = [
-    { id: 'IAM-001', controle: 'Joiners — provisioning standard', volume_12mois: 47, exceptions: 0, statut: 'ok', revue: '2026-04-01' },
-    { id: 'IAM-002', controle: 'Movers — révision droits sous 30j', volume_12mois: 23, exceptions: 3, statut: 'warning', revue: '2026-04-01' },
-    { id: 'IAM-003', controle: 'Leavers — désactivation J+0', volume_12mois: 31, exceptions: 1, statut: 'warning', revue: '2026-04-01' },
-    { id: 'IAM-004', controle: 'Revue trimestrielle accès privilégiés', volume_12mois: 4, exceptions: 0, statut: 'ok', revue: '2026-04-01' },
-    { id: 'IAM-005', controle: 'Comptes génériques (banques, paiement)', volume_12mois: 8, exceptions: 0, statut: 'ok', revue: '2026-04-01' },
-    { id: 'IAM-006', controle: 'MFA obligatoire applis sensibles', volume_12mois: 156, exceptions: 0, statut: 'ok', revue: '2026-04-01' },
-    { id: 'IAM-007', controle: 'Comptes inactifs > 90 jours', volume_12mois: 12, exceptions: 12, statut: 'critical', revue: '2026-04-01' }
-  ];
-
-  // 12. Master data
-  window.IC_MASTERDATA = [
-    { id: 'MD-001', type: 'Création fournisseur', volume_12mois: 142, ecarts: 3, controles: 'KYC + double validation', statut: 'ok' },
-    { id: 'MD-002', type: 'Modification IBAN fournisseur', volume_12mois: 28, ecarts: 1, controles: 'Vérification téléphonique + 4-eyes', statut: 'warning' },
-    { id: 'MD-003', type: 'Création client', volume_12mois: 312, ecarts: 5, controles: 'KYC + scoring crédit', statut: 'ok' },
-    { id: 'MD-004', type: 'Création article / SKU', volume_12mois: 87, ecarts: 0, controles: 'Workflow R&D + Compta', statut: 'ok' },
-    { id: 'MD-005', type: 'Modification structure organisationnelle', volume_12mois: 14, ecarts: 0, controles: 'Validation DRH + DSI', statut: 'ok' },
-    { id: 'MD-006', type: 'Plan de comptes (création)', volume_12mois: 6, ecarts: 0, controles: 'Validation CFO obligatoire', statut: 'ok' }
-  ];
-
-  // 13. ITGC
-  window.IC_ITGC = [
-    { id: 'ITGC-001', controle: 'Change Management ERP', frequence: 'Continue', dernier_audit: '2026-Q1', maturite: 4, statut: 'ok' },
-    { id: 'ITGC-002', controle: 'Backup quotidien + restore test', frequence: 'Mensuelle', dernier_audit: '2026-04-15', maturite: 4, statut: 'ok' },
-    { id: 'ITGC-003', controle: 'Patch management critiques', frequence: 'Hebdomadaire', dernier_audit: '2026-04-22', maturite: 3, statut: 'warning' },
-    { id: 'ITGC-004', controle: 'Logs & monitoring (SIEM)', frequence: 'Continue', dernier_audit: '2026-Q1', maturite: 3, statut: 'ok' },
-    { id: 'ITGC-005', controle: 'Tests de sécurité (pentest)', frequence: 'Annuelle', dernier_audit: '2025-11-08', maturite: 4, statut: 'ok' },
-    { id: 'ITGC-006', controle: 'Plan de reprise (DRP) testé', frequence: 'Annuelle', dernier_audit: '2025-10-22', maturite: 3, statut: 'ok' },
-    { id: 'ITGC-007', controle: 'Inventaire applicatif & licences', frequence: 'Trimestrielle', dernier_audit: '2026-Q1', maturite: 4, statut: 'ok' }
-  ];
-
-  // 14. Sensitive transactions
-  window.IC_SENSITIVE = [
-    { id: 'ST-2026-022', type: 'Avoir client', montant: 85000, demandeur: 'CCO', validation: 'CFO', justification: 'Compensation problème qualité', statut: 'valide' },
-    { id: 'ST-2026-021', type: 'Write-off créance', montant: 145000, demandeur: 'Compta clients', validation: 'CFO', justification: 'Liquidation client USA Corp', statut: 'valide' },
-    { id: 'ST-2026-020', type: 'Rabais commercial exceptionnel', montant: 220000, demandeur: 'CRO', validation: 'CEO', justification: 'Distributeur stratégique APAC', statut: 'valide' },
-    { id: 'ST-2026-019', type: 'Réversion commission', montant: 38000, demandeur: 'Sales Manager', validation: 'CCO', justification: 'Erreur calcul Q4 2025', statut: 'valide' },
-    { id: 'ST-2026-018', type: 'Avoir B2B', montant: 65000, demandeur: 'CRO', validation: 'CFO', justification: 'Geste commercial fidélisation', statut: 'attente' },
-    { id: 'ST-2026-017', type: 'Provision pour litige', montant: 320000, demandeur: 'Legal', validation: 'CFO+GC', justification: 'Procédure en cours retailer USA', statut: 'valide' }
-  ];
-
-  // 15. BCP/DRP
-  window.IC_BCP = [
-    { id: 'BCP-001', processus: 'ERP + Finance', rto: '4h', rpo: '1h', dernier_test: '2025-10-22', resultat: 'OK', maturite: 4 },
-    { id: 'BCP-002', processus: 'CRM + Commercial', rto: '8h', rpo: '4h', dernier_test: '2025-10-22', resultat: 'OK', maturite: 4 },
-    { id: 'BCP-003', processus: 'Production / MES', rto: '2h', rpo: '15min', dernier_test: '2025-09-15', resultat: 'OK avec écart mineur', maturite: 3 },
-    { id: 'BCP-004', processus: 'Email & Collaboration', rto: '1h', rpo: '15min', dernier_test: '2025-10-22', resultat: 'OK', maturite: 4 },
-    { id: 'BCP-005', processus: 'Site e-commerce', rto: '30min', rpo: '5min', dernier_test: '2025-08-08', resultat: 'OK', maturite: 4 },
-    { id: 'BCP-006', processus: 'Logistique / WMS', rto: '4h', rpo: '1h', dernier_test: '2025-09-15', resultat: 'À améliorer', maturite: 2 }
+  window.RGPD_VIOLATIONS = [
+    { id:'VIO-2026-005', date:'2026-04-25', heure:'14:32', type:'Phishing avec exfiltration', personnes:1250, gravite:3, vraisemblance:3, donneesCompromises:'Emails + noms + fonctions', notification_cnil:true, notification_personnes:true, statut:'en_cours', countdown_h:42, owner:'DPO + RSSI' },
+    { id:'VIO-2026-004', date:'2026-04-15', heure:'09:18', type:'Vol ordinateur portable', personnes:85, gravite:2, vraisemblance:2, donneesCompromises:'Liste clients chiffrée', notification_cnil:false, notification_personnes:false, statut:'cloturee', countdown_h:0, owner:'DPO' },
+    { id:'VIO-2026-003', date:'2026-03-28', heure:'16:45', type:'Erreur d\'envoi mass mail', personnes:340, gravite:1, vraisemblance:4, donneesCompromises:'Adresses email visibles', notification_cnil:true, notification_personnes:false, statut:'cloturee', countdown_h:0, owner:'DPO + Marketing' },
+    { id:'VIO-2026-002', date:'2026-02-12', heure:'11:00', type:'Ransomware partiel', personnes:0, gravite:4, vraisemblance:2, donneesCompromises:'Aucune donnée exfiltrée (chiffrement bloqué)', notification_cnil:false, notification_personnes:false, statut:'cloturee', countdown_h:0, owner:'DPO + RSSI + COMEX' },
+    { id:'VIO-2026-001', date:'2026-01-20', heure:'08:30', type:'Accès non autorisé interne', personnes:12, gravite:2, vraisemblance:3, donneesCompromises:'Données RH consultées', notification_cnil:true, notification_personnes:true, statut:'cloturee', countdown_h:0, owner:'DPO + DRH' }
   ];
 
   // ════════════════════════════════════════════════════════════════════════
-  // KPIs GLOBAUX IC
+  // HELPERS
   // ════════════════════════════════════════════════════════════════════════
-  function icGlobalKPIs() {
-    var sodViolations = IC_SOD.filter(function(s){ return s.statut === 'violation'; }).length;
-    var iamCritical = IC_IAM.filter(function(i){ return i.statut === 'critical'; }).length;
-    var prpoPending = IC_PRPO.filter(function(p){ return p.statut.indexOf('pending') === 0; }).length;
-    var cashWarning = IC_CASH.filter(function(c){ return c.statut === 'warning'; }).length;
-    return { sodViolations: sodViolations, iamCritical: iamCritical, prpoPending: prpoPending, cashWarning: cashWarning };
+  function dpoxRiskSig(v, g) {
+    var prod = v * g;
+    if (prod >= 12) return 's-r';
+    if (prod >= 8) return 's-r';
+    if (prod >= 4) return 's-a';
+    return 's-g';
   }
 
-  function icSigClass(s) {
-    if (s === 'ok' || s === 'fait' || s === 'valide' || s === 'approuve_post' || s === 'documente' || s === 'cloture' || s === 'approved' || s === 'signe' || s === 'normal' || s === 'controle') return 's-g';
-    if (s === 'warning' || s === 'a_investiguer' || s === 'en_cours' || s === 'attente' || s === 'investigation' || s === 'en_negociation' || s === 'attente_signature' || s === 'attente_conseil' || s === 'relance' || s.indexOf('pending') === 0 || s === 'a_faire') return 's-a';
-    if (s === 'critical' || s === 'violation' || s === 'rejected' || s === 'litige' || s === 'douteux' || s === 'contentieux') return 's-r';
-    return 's-a';
+  function dpoxRiskLabel(v, g) {
+    var prod = v * g;
+    if (prod >= 12) return 'Critique';
+    if (prod >= 8) return 'Élevé';
+    if (prod >= 4) return 'Modéré';
+    return 'Faible';
   }
 
-  function icRiskSig(r) {
-    return r === 'high' ? 's-r' : r === 'medium' ? 's-a' : 's-g';
+  // Simulation IA Copilot — délai réaliste + réponse structurée
+  function dpoxSimulateCopilot(input, type, callback) {
+    // type: 'aipd' | 'droit' | 'violation'
+    setTimeout(function() {
+      var response = dpoxGenerateCopilotResponse(input, type);
+      callback(response);
+    }, 1800 + Math.random() * 1000); // 1.8s - 2.8s simulation
   }
 
-  function icRiskLabel(r) {
-    return r === 'high' ? 'Élevé' : r === 'medium' ? 'Moyen' : 'Faible';
+  // Génération de réponses copilot pré-craftées selon le type
+  function dpoxGenerateCopilotResponse(input, type) {
+    var lower = (input || '').toLowerCase();
+
+    if (type === 'aipd') {
+      // Détection mots-clés pour adapter la réponse
+      var hasVideo = /video|cam[eé]ra|surveillance|reconnaiss/i.test(input);
+      var hasGeo = /g[eé]olocalis|gps|position|trajet/i.test(input);
+      var hasAI = /ia|intelligence|algorithm|machine learning|ml|scoring|d[eé]cision automat/i.test(input);
+      var hasBio = /biom[eé]tri|empreinte|facial|reconnaiss/i.test(input);
+      var hasSensitive = /sant[eé]|m[eé]dical|religion|orientation|opinion/i.test(input);
+      var hasMinors = /enfant|mineur|[eé]tudiant|[eé]l[eé]ve/i.test(input);
+
+      var risqueGlobal = 'modéré';
+      if (hasBio || hasAI || hasSensitive || hasMinors) risqueGlobal = 'élevé';
+      if ((hasBio && hasAI) || (hasSensitive && hasAI)) risqueGlobal = 'critique';
+
+      var consultationCNIL = (hasBio && hasAI) || (hasSensitive && hasAI) || risqueGlobal === 'critique';
+
+      var risquesIdentifies = [];
+      if (hasVideo) risquesIdentifies.push({ risque: 'Surveillance excessive des personnes filmées', vraisemblance: 3, gravite: 3, mesures: 'Limiter durée conservation à 30j, signaler par affichage, restreindre accès aux images aux personnes habilitées' });
+      if (hasBio) risquesIdentifies.push({ risque: 'Atteinte à l\'intégrité physique (donnée biométrique = sensible Art. 9 RGPD)', vraisemblance: 2, gravite: 4, mesures: 'Consentement explicite OBLIGATOIRE, anonymisation après usage, alternative non-biométrique disponible' });
+      if (hasGeo) risquesIdentifies.push({ risque: 'Surveillance disproportionnée des déplacements (vie privée)', vraisemblance: 3, gravite: 3, mesures: 'Désactivation hors heures travail, agrégation par zone, consultation CSE' });
+      if (hasAI) risquesIdentifies.push({ risque: 'Décision automatisée sans intervention humaine (Art. 22 RGPD)', vraisemblance: 3, gravite: 4, mesures: 'Information des personnes, droit de contestation, intervention humaine systématique' });
+      if (hasSensitive) risquesIdentifies.push({ risque: 'Traitement données sensibles (Art. 9 RGPD)', vraisemblance: 2, gravite: 4, mesures: 'Base légale renforcée requise, chiffrement obligatoire, accès restreint et tracé' });
+      if (hasMinors) risquesIdentifies.push({ risque: 'Protection renforcée des mineurs', vraisemblance: 2, gravite: 4, mesures: 'Consentement parental si <15 ans, information adaptée, durée minimale conservation' });
+
+      // Si rien détecté, ajouter risques génériques
+      if (risquesIdentifies.length === 0) {
+        risquesIdentifies = [
+          { risque: 'Accès non autorisé aux données', vraisemblance: 2, gravite: 3, mesures: 'Authentification forte, gestion des droits par profils, journalisation des accès' },
+          { risque: 'Conservation excessive', vraisemblance: 3, gravite: 2, mesures: 'Définir durée précise par type de donnée, purge automatique programmée' },
+          { risque: 'Transfert hors UE non encadré', vraisemblance: 2, gravite: 3, mesures: 'Vérifier localisation des sous-traitants, mettre en place SCCs si transfert' }
+        ];
+      }
+
+      return {
+        type: 'aipd',
+        synthese: 'Analyse du traitement décrit : le risque global est ' + risqueGlobal + (consultationCNIL ? '. Une consultation préalable de la CNIL est recommandée.' : '.'),
+        finalite: input.substring(0, 200) + (input.length > 200 ? '...' : ''),
+        baseLegale: hasSensitive || hasBio ? 'Consentement explicite (Art. 9.2.a RGPD) — alternative à proposer obligatoirement' : (hasMinors ? 'Consentement / Intérêt légitime selon contexte' : 'Intérêt légitime ou Exécution du contrat (à confirmer)'),
+        risquesIdentifies: risquesIdentifies,
+        risqueGlobal: risqueGlobal,
+        consultationCNIL: consultationCNIL,
+        recommandation: consultationCNIL
+          ? 'Consultation CNIL préalable OBLIGATOIRE (Art. 36 RGPD). Suspendre la mise en œuvre. Préparer dossier complet pour soumission.'
+          : (risqueGlobal === 'élevé'
+            ? 'Mise en œuvre possible APRÈS implémentation de toutes les mesures listées et validation DPO.'
+            : 'Mise en œuvre autorisée avec mesures standards. Revue annuelle.'),
+        mesuresGlobales: [
+          'Information claire et transparente des personnes concernées',
+          'Mise en place du registre Art. 30 RGPD',
+          'Désignation d\'un responsable de traitement',
+          'Procédure d\'exercice des droits documentée',
+          'Plan de notification en cas de violation (72h CNIL + personnes)',
+          'Revue annuelle du traitement et des mesures'
+        ]
+      };
+    }
+
+    if (type === 'droit') {
+      var isAcces = /acc[eè]s|copie|consulter mes donn/i.test(input);
+      var isEffacement = /effac|suppress|oubli|supprim/i.test(input);
+      var isRectif = /rectif|corrig|modif/i.test(input);
+      var isOpposition = /opposition|cesser|refuse/i.test(input);
+      var isPortab = /portab|transf[eé]rer|export/i.test(input);
+      var isAncien = /ancien|parti|d[eé]part|quitt|2 ans|3 ans|5 ans|10 ans/i.test(input);
+
+      var typeReq = 'acces';
+      var typeLabel = 'Droit d\'accès (Art. 15)';
+      if (isEffacement) { typeReq = 'effacement'; typeLabel = 'Droit à l\'effacement (Art. 17)'; }
+      else if (isRectif) { typeReq = 'rectification'; typeLabel = 'Droit de rectification (Art. 16)'; }
+      else if (isOpposition) { typeReq = 'opposition'; typeLabel = 'Droit d\'opposition (Art. 21)'; }
+      else if (isPortab) { typeReq = 'portabilite'; typeLabel = 'Droit à la portabilité (Art. 20)'; }
+
+      var obligationsLegales = [];
+      var exceptions = [];
+
+      if (typeReq === 'effacement') {
+        obligationsLegales = [
+          'Vérifier identité du demandeur (CNI ou équivalent)',
+          'Identifier tous les traitements concernant la personne',
+          'Évaluer si l\'effacement est compatible avec les obligations légales'
+        ];
+        exceptions = [
+          'Conservation paie : 5 ans après départ (obligation comptable)',
+          'Conservation contrat de travail : 5 ans',
+          'Conservation données fiscales : 6 ans',
+          'Litige en cours : conservation jusqu\'à prescription (5 ans après fin)',
+          'Obligation légale de conservation (RH, comptabilité, sécurité)'
+        ];
+      } else if (typeReq === 'acces') {
+        obligationsLegales = [
+          'Vérifier identité du demandeur',
+          'Compiler données personnelles depuis tous les systèmes',
+          'Fournir copie dans format lisible, gratuite (1ère copie)',
+          'Inclure : finalités, catégories, destinataires, durée conservation, droits'
+        ];
+        exceptions = [
+          'Refus possible si demande manifestement infondée ou excessive',
+          'Pas d\'obligation de fournir données protégées par secret professionnel',
+          'Copie supplémentaire : frais raisonnables possibles'
+        ];
+      } else if (typeReq === 'opposition') {
+        obligationsLegales = [
+          'Vérifier identité',
+          'Examiner les motifs liés à la situation particulière',
+          'Cesser le traitement sauf motifs légitimes impérieux',
+          'Pour prospection : effet immédiat, sans motif requis'
+        ];
+        exceptions = [
+          'Motifs légitimes impérieux du responsable peuvent prévaloir',
+          'Exécution d\'une mission d\'intérêt public',
+          'Constatation, exercice ou défense de droits en justice'
+        ];
+      }
+
+      var reponseTemplate = '';
+      if (typeReq === 'effacement' && isAncien) {
+        reponseTemplate = 'Madame, Monsieur,\n\n' +
+          'Nous accusons réception de votre demande d\'effacement (Art. 17 RGPD) en date du [DATE].\n\n' +
+          'Après vérification de votre identité et examen de votre situation, nous vous informons :\n\n' +
+          '✓ Effacement effectué pour : données marketing, données commerciales, comptes utilisateur, historique de navigation.\n\n' +
+          '⚠ Conservation maintenue pour les données suivantes au titre de nos obligations légales :\n' +
+          '   • Bulletins de paie et déclarations sociales : 5 ans après départ (Code du travail)\n' +
+          '   • Contrat de travail : 5 ans après rupture\n' +
+          '   • Données fiscales et comptables : 6 ans (Code général des impôts)\n\n' +
+          'À l\'expiration de ces délais, ces données seront automatiquement supprimées.\n\n' +
+          'Si vous souhaitez contester cette réponse, vous pouvez introduire une réclamation auprès de la CNIL (www.cnil.fr).\n\n' +
+          'Cordialement,\n\nLe Délégué à la Protection des Données';
+      } else if (typeReq === 'acces') {
+        reponseTemplate = 'Madame, Monsieur,\n\n' +
+          'Suite à votre demande d\'accès (Art. 15 RGPD) en date du [DATE], et après vérification de votre identité, nous vous transmettons :\n\n' +
+          '1. La copie complète des données personnelles que nous traitons vous concernant (en pièce jointe sécurisée).\n' +
+          '2. Les finalités des traitements : [À compléter selon catégories].\n' +
+          '3. Les catégories de données : identité, contact, données professionnelles, données techniques.\n' +
+          '4. Les destinataires : services internes habilités, sous-traitants listés (annexe).\n' +
+          '5. Durées de conservation par catégorie.\n' +
+          '6. Vos droits : rectification, effacement, opposition, portabilité, limitation, réclamation CNIL.\n\n' +
+          'Conformément à l\'article 12 RGPD, cette première copie est gratuite.\n\n' +
+          'Cordialement,\n\nLe Délégué à la Protection des Données';
+      } else {
+        reponseTemplate = 'Madame, Monsieur,\n\n' +
+          'Nous accusons réception de votre demande relative à l\'exercice de votre ' + typeLabel + ' en date du [DATE].\n\n' +
+          'Après vérification de votre identité et examen de votre demande au regard de nos obligations légales, nous donnons suite favorable / partiellement favorable à votre demande [À COMPLÉTER selon analyse].\n\n' +
+          '[Détailler ce qui est fait / pas fait avec justifications]\n\n' +
+          'Cordialement,\n\nLe Délégué à la Protection des Données';
+      }
+
+      return {
+        type: 'droit',
+        typeRequete: typeReq,
+        typeLabel: typeLabel,
+        delaiLegal: '1 mois à compter de la réception (extensible à 3 mois si complexité, avec information du demandeur sous 1 mois)',
+        obligationsLegales: obligationsLegales,
+        exceptions: exceptions,
+        reponseTemplate: reponseTemplate,
+        recommandation: typeReq === 'effacement' && isAncien
+          ? 'Cas typique d\'ancien salarié — l\'effacement TOTAL n\'est pas possible. Conserver paie/contrats/fiscal selon obligations. Effacer le reste.'
+          : 'Procéder à la vérification d\'identité avant toute action. Documenter chaque étape pour audit AFA/CNIL.'
+      };
+    }
+
+    if (type === 'violation') {
+      var hasExfil = /exfiltrat|fuite|vol[eé]|copi[eé]|publi[eé]/i.test(input);
+      var hasMass = /tous|massif|grand nombre|milliers|1000|10000/i.test(input);
+      var hasSensitive2 = /sant[eé]|biom[eé]tri|paie|salaire|nir|s[eé]curit[eé] sociale|carte/i.test(input);
+      var hasContenu = /chiffr[eé]|encrypt[eé]|hash[eé]/i.test(input);
+
+      var gravite = 2;
+      var vraisemblance = 2;
+      if (hasExfil) gravite += 1;
+      if (hasMass) vraisemblance += 1;
+      if (hasSensitive2) gravite += 1;
+      if (hasContenu) gravite -= 1;
+      gravite = Math.max(1, Math.min(4, gravite));
+      vraisemblance = Math.max(1, Math.min(4, vraisemblance));
+
+      var risqueProd = gravite * vraisemblance;
+      var notifCNIL = risqueProd >= 6 || hasExfil || hasSensitive2;
+      var notifPersonnes = risqueProd >= 9 || (hasExfil && hasSensitive2);
+
+      var qualification = '';
+      if (risqueProd >= 12) qualification = 'Violation MAJEURE — Notification CNIL + personnes obligatoires';
+      else if (risqueProd >= 8) qualification = 'Violation SIGNIFICATIVE — Notification CNIL obligatoire, personnes recommandée';
+      else if (risqueProd >= 4) qualification = 'Violation MODÉRÉE — Évaluer notification CNIL au cas par cas';
+      else qualification = 'Incident MINEUR — Documentation interne suffit, pas de notification externe';
+
+      var actions = [
+        'CONTAINMENT immédiat : isoler le système compromis',
+        'Évaluer l\'étendue exacte (nb personnes, nature données, durée)',
+        'Documenter dans le registre des violations (Art. 33.5 RGPD)',
+        'Mobiliser CSIRT/RSSI si dimension cyber'
+      ];
+      if (notifCNIL) actions.push('NOTIFICATION CNIL sous 72h via téléservice CNIL (form B-1)');
+      if (notifPersonnes) actions.push('NOTIFICATION INDIVIDUELLE des personnes concernées (langage clair, mesures à prendre)');
+      actions.push('Plan de remédiation : cause racine + mesures correctives + revue dans 30j');
+
+      return {
+        type: 'violation',
+        qualification: qualification,
+        gravite: gravite,
+        vraisemblance: vraisemblance,
+        notifCNIL: notifCNIL,
+        notifPersonnes: notifPersonnes,
+        delai: '⏰ 72 HEURES maximum à compter de la prise de connaissance',
+        actions: actions,
+        notificationCNILTemplate: notifCNIL ? 'Notification CNIL Art. 33 — À soumettre via téléservice www.cnil.fr/notifications-de-violations-de-donnees\n\n' +
+          '1. Nature de la violation : [Description]\n' +
+          '2. Catégories et nombre approximatif de personnes : [À compléter]\n' +
+          '3. Catégories et volume de données : [À compléter]\n' +
+          '4. Conséquences probables : [Évaluation]\n' +
+          '5. Mesures prises ou proposées : [Détailler containment + remédiation]\n' +
+          '6. Coordonnées DPO : [À compléter]' : null,
+        notificationPersonnesTemplate: notifPersonnes ? 'Madame, Monsieur,\n\n' +
+          'Nous vous informons qu\'un incident de sécurité ayant pu affecter vos données personnelles s\'est produit le [DATE].\n\n' +
+          'Données concernées : [PRÉCISER]\n' +
+          'Conséquences possibles : [LISTER]\n' +
+          'Mesures que nous avons prises : [DÉTAILLER]\n' +
+          'Mesures recommandées de votre côté : [LISTER ex: changement mot de passe, vigilance phishing]\n\n' +
+          'Pour toute question : [CONTACT DPO]\n\nCordialement,\nLe Délégué à la Protection des Données' : null
+      };
+    }
+
+    return null;
   }
 
-  function fmtMoney(n) {
-    if (n >= 1000000) return (n/1000000).toFixed(2) + ' M€';
-    if (n >= 1000) return (n/1000).toFixed(0) + ' K€';
-    return n + ' €';
+  // ════════════════════════════════════════════════════════════════════════
+  // AUTO-DÉTECTION : analyser les données existantes pour identifier risques
+  // ════════════════════════════════════════════════════════════════════════
+  function dpoxDetectAIPDRisks() {
+    var alerts = [];
+    if (!window.RGPD_TRAITEMENTS) return alerts;
+
+    // Traitements à risque haut sans AIPD validée
+    RGPD_TRAITEMENTS.forEach(function(t) {
+      if (t.risque === 'high' && t.statut === 'actif') {
+        var aipdExists = window.RGPD_AIPD ? window.RGPD_AIPD.find(function(a) {
+          return a.traitement.toLowerCase().indexOf(t.nom.toLowerCase().substring(0, 15)) >= 0 && a.statut === 'validée';
+        }) : null;
+        if (!aipdExists) {
+          alerts.push({
+            severity: 'high',
+            titre: '⚠ AIPD manquante : ' + t.nom,
+            message: 'Ce traitement est classé risque élevé mais aucune AIPD validée n\'a été trouvée. Une analyse d\'impact est obligatoire (Art. 35 RGPD).',
+            action: 'Lancer AIPD avec IA Copilot'
+          });
+        }
+      }
+    });
+
+    // AIPD en cours depuis plus de 30j
+    if (window.RGPD_AIPD) {
+      RGPD_AIPD.filter(function(a) { return a.statut === 'en_cours'; }).forEach(function(a) {
+        alerts.push({
+          severity: 'medium',
+          titre: '⏰ AIPD en cours : ' + a.traitement,
+          message: 'Cette AIPD est en cours depuis plus de 30 jours. Risque de blocage du traitement.',
+          action: 'Finaliser ou consulter CNIL'
+        });
+      });
+    }
+
+    return alerts;
+  }
+
+  function dpoxDetectDroitsRisks() {
+    var alerts = [];
+    if (!window.RGPD_DROITS) return alerts;
+
+    RGPD_DROITS.forEach(function(d) {
+      if (d.statut === 'urgente' || (d.statut === 'en_cours' && d.joursRestants <= 10 && d.joursRestants > 0)) {
+        alerts.push({
+          severity: d.joursRestants <= 5 ? 'high' : 'medium',
+          titre: '⏰ ' + d.id + ' — ' + d.demandeur + ' (' + d.joursRestants + 'j restants)',
+          message: 'Demande de ' + d.type + ' à traiter avant ' + d.echeance + '. Dépassement = risque sanction CNIL.',
+          action: 'Traiter avec IA Copilot'
+        });
+      }
+    });
+
+    return alerts;
+  }
+
+  function dpoxDetectViolationsRisks() {
+    var alerts = [];
+    if (!window.RGPD_VIOLATIONS) return alerts;
+
+    RGPD_VIOLATIONS.filter(function(v) { return v.statut === 'en_cours'; }).forEach(function(v) {
+      var sev = v.countdown_h < 24 ? 'high' : v.countdown_h < 48 ? 'medium' : 'low';
+      alerts.push({
+        severity: sev,
+        titre: '🚨 ' + v.id + ' — ' + v.type,
+        message: 'Notification CNIL ' + (v.notification_cnil ? 'OBLIGATOIRE' : 'évaluée') + '. Temps restant : ' + v.countdown_h + 'h sur 72h.',
+        action: 'Compléter dossier'
+      });
+    });
+
+    return alerts;
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 1 : DOA
+  // BANDEAU AUTO-DÉTECTION (composant réutilisable)
   // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-doa'] = function() {
-    var t = document.getElementById('ctab-ic-doa');
+  function dpoxRenderAlertBanner(alerts, moduleType) {
+    if (!alerts || alerts.length === 0) {
+      return '<div class="card mb20" style="background:rgba(42,122,84,.05);border-color:rgba(42,122,84,.3)">' +
+        '<div class="flex gap12" style="align-items:center">' +
+          '<div style="font-size:24px">✓</div>' +
+          '<div>' +
+            '<div class="fw7 c-green fs13">Auto-détection : aucun risque identifié</div>' +
+            '<div class="fs11 c-muted">L\'IA a analysé vos données — tout est sous contrôle pour ce module.</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    var sevColors = {
+      high: { bg: 'rgba(192,80,58,.08)', border: '#c0503a', label: 'CRITIQUE' },
+      medium: { bg: 'rgba(212,136,10,.08)', border: '#d4880a', label: 'ATTENTION' },
+      low: { bg: 'rgba(15,26,46,.05)', border: '#0F1A2E', label: 'INFO' }
+    };
+
+    return '<div class="card mb20" style="background:rgba(212,136,10,.04);border-color:rgba(212,136,10,.3)">' +
+      '<div class="flexb mb12">' +
+        '<div class="fw7 fs13 c-navy">🔍 Auto-détection IA · ' + alerts.length + ' point' + (alerts.length > 1 ? 's' : '') + ' d\'attention</div>' +
+        '<div class="fs11 c-muted">Analyse continue de vos données</div>' +
+      '</div>' +
+      alerts.slice(0, 5).map(function(a) {
+        var c = sevColors[a.severity] || sevColors.low;
+        return '<div class="flex gap12" style="align-items:flex-start;padding:10px 12px;background:' + c.bg + ';border-left:3px solid ' + c.border + ';border-radius:6px;margin-bottom:6px">' +
+          '<div style="flex:1">' +
+            '<div class="fw7 fs12 c-navy">' + a.titre + '</div>' +
+            '<div class="fs11 c-muted" style="margin-top:2px">' + a.message + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // PANNEAU IA COPILOT (composant réutilisable)
+  // ════════════════════════════════════════════════════════════════════════
+  function dpoxRenderCopilotPanel(moduleType, placeholder) {
+    return '<div class="card mb20" style="background:linear-gradient(135deg,rgba(15,26,46,.03) 0%,rgba(212,136,10,.05) 100%);border-color:rgba(212,136,10,.4)">' +
+      '<div class="flexb mb12">' +
+        '<div class="flex gap8" style="align-items:center">' +
+          '<div style="font-size:22px">🧠</div>' +
+          '<div>' +
+            '<div class="fw7 fs13 c-navy">IA Copilot · ' + (moduleType === 'aipd' ? 'AIPD assistée' : moduleType === 'droit' ? 'Réponse aux droits' : 'Qualification violation') + '</div>' +
+            '<div class="fs11 c-muted">Décrivez votre cas en langage naturel · L\'IA propose un livrable structuré</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sig s-a">DEMO — Claude API</div>' +
+      '</div>' +
+      '<textarea id="dpox-input-' + moduleType + '" placeholder="' + placeholder + '" style="width:100%;min-height:90px;padding:12px;border:1px solid rgba(15,26,46,.15);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;box-sizing:border-box;background:#fff" oninput="dpoxOnInput(\'' + moduleType + '\')"></textarea>' +
+      '<div class="flexb" style="margin-top:10px">' +
+        '<div class="fs11 c-muted" id="dpox-charcount-' + moduleType + '">0 caractère</div>' +
+        '<button class="btn btn-primary btn-sm" id="dpox-btn-' + moduleType + '" onclick="dpoxRunCopilot(\'' + moduleType + '\')" disabled>🧠 Analyser avec l\'IA</button>' +
+      '</div>' +
+      '<div id="dpox-result-' + moduleType + '" style="margin-top:14px;display:none"></div>' +
+    '</div>';
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // INPUT HANDLERS
+  // ════════════════════════════════════════════════════════════════════════
+  window.dpoxOnInput = function(type) {
+    var input = document.getElementById('dpox-input-' + type);
+    var btn = document.getElementById('dpox-btn-' + type);
+    var counter = document.getElementById('dpox-charcount-' + type);
+    if (!input || !btn) return;
+    var len = input.value.length;
+    counter.textContent = len + ' caractère' + (len > 1 ? 's' : '');
+    btn.disabled = len < 20;
+  };
+
+  window.dpoxRunCopilot = function(type) {
+    var input = document.getElementById('dpox-input-' + type);
+    var btn = document.getElementById('dpox-btn-' + type);
+    var result = document.getElementById('dpox-result-' + type);
+    if (!input || !btn || !result) return;
+
+    var text = input.value.trim();
+    if (text.length < 20) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="mono">⏳</span> Claude analyse...';
+    result.style.display = 'block';
+    result.innerHTML = '<div class="card" style="background:rgba(15,26,46,.03);border:none;text-align:center;padding:30px">' +
+      '<div class="fs13 c-navy fw7">🧠 Claude analyse votre cas...</div>' +
+      '<div class="fs11 c-muted" style="margin-top:6px">Identification des risques · Recherche des bases légales · Génération du livrable</div>' +
+      '<div style="margin-top:14px;height:4px;background:rgba(15,26,46,.08);border-radius:2px;overflow:hidden">' +
+        '<div style="height:100%;width:30%;background:#d4880a;animation:dpoxLoad 2s ease-in-out infinite"></div>' +
+      '</div>' +
+    '</div>';
+
+    dpoxSimulateCopilot(text, type, function(response) {
+      btn.disabled = false;
+      btn.innerHTML = '🔄 Relancer l\'analyse';
+      result.innerHTML = dpoxRenderCopilotResult(response, type);
+    });
+  };
+
+  // ════════════════════════════════════════════════════════════════════════
+  // RENDER RÉSULTAT IA
+  // ════════════════════════════════════════════════════════════════════════
+  function dpoxRenderCopilotResult(response, type) {
+    if (!response) return '<div class="c-red">Erreur d\'analyse</div>';
+
+    if (type === 'aipd') {
+      var sigClass = response.risqueGlobal === 'critique' ? 's-r' : response.risqueGlobal === 'élevé' ? 's-r' : response.risqueGlobal === 'modéré' ? 's-a' : 's-g';
+      return '<div class="card" style="background:#fff;border-color:rgba(42,122,84,.4)">' +
+        '<div class="flexb mb14">' +
+          '<div class="fw8 fs13 c-navy">✓ AIPD générée par l\'IA</div>' +
+          '<span class="sig ' + sigClass + '">Risque ' + response.risqueGlobal + '</span>' +
+        '</div>' +
+        '<div class="mb12"><div class="fw7 fs12 c-navy mb8">📋 Synthèse</div><div class="fs12 c-steel">' + response.synthese + '</div></div>' +
+        '<div class="mb12"><div class="fw7 fs12 c-navy mb8">⚖️ Base légale identifiée</div><div class="fs12 c-steel">' + response.baseLegale + '</div></div>' +
+        '<div class="mb12">' +
+          '<div class="fw7 fs12 c-navy mb8">⚠ Risques identifiés (' + response.risquesIdentifies.length + ')</div>' +
+          response.risquesIdentifies.map(function(r) {
+            var rsig = dpoxRiskSig(r.vraisemblance, r.gravite);
+            return '<div style="padding:10px;background:rgba(15,26,46,.03);border-radius:6px;margin-bottom:8px">' +
+              '<div class="flexb"><div class="fw7 fs12 c-navy">' + r.risque + '</div><span class="sig ' + rsig + '">V' + r.vraisemblance + ' · G' + r.gravite + '</span></div>' +
+              '<div class="fs11 c-muted" style="margin-top:6px"><span class="fw7">Mesures : </span>' + r.mesures + '</div>' +
+            '</div>';
+          }).join('') +
+        '</div>' +
+        (response.consultationCNIL ? '<div style="padding:12px;background:rgba(192,80,58,.08);border-left:3px solid #c0503a;border-radius:6px;margin-bottom:14px"><div class="fw7 c-red fs12">🛑 Consultation CNIL préalable OBLIGATOIRE</div><div class="fs11 c-steel" style="margin-top:4px">' + response.recommandation + '</div></div>' :
+          '<div style="padding:12px;background:rgba(212,136,10,.06);border-left:3px solid #d4880a;border-radius:6px;margin-bottom:14px"><div class="fw7 c-amber fs12">📌 Recommandation</div><div class="fs11 c-steel" style="margin-top:4px">' + response.recommandation + '</div></div>') +
+        '<div class="mb12"><div class="fw7 fs12 c-navy mb8">🛡 Mesures globales recommandées</div>' + response.mesuresGlobales.map(function(m){ return '<div class="fs11 c-steel" style="margin:4px 0">• ' + m + '</div>'; }).join('') + '</div>' +
+        '<div class="flexb" style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(15,26,46,.08)">' +
+          '<button class="btn btn-ghost btn-sm" onclick="toast(\'Modification — Phase 2\',\'var(--amber)\')">✏ Modifier</button>' +
+          '<button class="btn btn-primary btn-sm" onclick="toast(\'AIPD enregistrée dans le registre\',\'var(--green)\')">✓ Valider et enregistrer</button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    if (type === 'droit') {
+      return '<div class="card" style="background:#fff;border-color:rgba(42,122,84,.4)">' +
+        '<div class="flexb mb14">' +
+          '<div class="fw8 fs13 c-navy">✓ Réponse générée par l\'IA</div>' +
+          '<span class="sig s-g">' + response.typeLabel + '</span>' +
+        '</div>' +
+        '<div class="mb12"><div class="fw7 fs12 c-navy mb8">⏰ Délai légal</div><div class="fs12 c-steel">' + response.delaiLegal + '</div></div>' +
+        '<div class="mb12">' +
+          '<div class="fw7 fs12 c-navy mb8">📋 Obligations légales</div>' +
+          response.obligationsLegales.map(function(o){ return '<div class="fs11 c-steel" style="margin:4px 0">• ' + o + '</div>'; }).join('') +
+        '</div>' +
+        (response.exceptions.length > 0 ? '<div class="mb12">' +
+          '<div class="fw7 fs12 c-navy mb8">⚠ Exceptions et limites</div>' +
+          response.exceptions.map(function(e){ return '<div class="fs11 c-steel" style="margin:4px 0">• ' + e + '</div>'; }).join('') +
+        '</div>' : '') +
+        '<div style="padding:12px;background:rgba(212,136,10,.06);border-left:3px solid #d4880a;border-radius:6px;margin-bottom:14px"><div class="fw7 c-amber fs12">📌 Recommandation</div><div class="fs11 c-steel" style="margin-top:4px">' + response.recommandation + '</div></div>' +
+        '<div class="mb12"><div class="fw7 fs12 c-navy mb8">📧 Modèle de réponse</div>' +
+          '<textarea readonly style="width:100%;min-height:200px;padding:12px;border:1px solid rgba(15,26,46,.15);border-radius:8px;font-family:DM Mono,monospace;font-size:11px;background:#FAFBFC;box-sizing:border-box;line-height:1.6">' + response.reponseTemplate + '</textarea>' +
+        '</div>' +
+        '<div class="flexb" style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(15,26,46,.08)">' +
+          '<button class="btn btn-ghost btn-sm" onclick="dpoxCopyText(\'' + type + '\')">📋 Copier le modèle</button>' +
+          '<button class="btn btn-primary btn-sm" onclick="toast(\'Requête créée dans l\\\'inbox droits\',\'var(--green)\')">✓ Créer la requête</button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    if (type === 'violation') {
+      var qualSig = response.gravite * response.vraisemblance >= 12 ? 's-r' : response.gravite * response.vraisemblance >= 8 ? 's-r' : response.gravite * response.vraisemblance >= 4 ? 's-a' : 's-g';
+      return '<div class="card" style="background:#fff;border-color:rgba(42,122,84,.4)">' +
+        '<div class="flexb mb14">' +
+          '<div class="fw8 fs13 c-navy">✓ Qualification IA terminée</div>' +
+          '<span class="sig ' + qualSig + '">V' + response.vraisemblance + ' · G' + response.gravite + '</span>' +
+        '</div>' +
+        '<div style="padding:12px;background:rgba(192,80,58,.08);border-left:3px solid #c0503a;border-radius:6px;margin-bottom:14px"><div class="fw7 c-red fs13">' + response.delai + '</div><div class="fs12 c-steel" style="margin-top:4px">' + response.qualification + '</div></div>' +
+        '<div class="g2 mb14">' +
+          '<div style="padding:12px;background:' + (response.notifCNIL ? 'rgba(192,80,58,.08)' : 'rgba(42,122,84,.06)') + ';border-radius:8px"><div class="fw7 fs12 c-navy">📨 Notification CNIL</div><div class="fw8 fs14 ' + (response.notifCNIL ? 'c-red' : 'c-green') + '" style="margin-top:6px">' + (response.notifCNIL ? 'OBLIGATOIRE' : 'Non requise') + '</div></div>' +
+          '<div style="padding:12px;background:' + (response.notifPersonnes ? 'rgba(192,80,58,.08)' : 'rgba(42,122,84,.06)') + ';border-radius:8px"><div class="fw7 fs12 c-navy">👥 Information personnes</div><div class="fw8 fs14 ' + (response.notifPersonnes ? 'c-red' : 'c-green') + '" style="margin-top:6px">' + (response.notifPersonnes ? 'OBLIGATOIRE' : 'Non requise') + '</div></div>' +
+        '</div>' +
+        '<div class="mb12">' +
+          '<div class="fw7 fs12 c-navy mb8">📋 Plan d\'action recommandé</div>' +
+          response.actions.map(function(a, i){ return '<div class="fs11 c-steel" style="margin:6px 0;padding-left:24px;position:relative"><span style="position:absolute;left:0;top:0;width:18px;height:18px;background:#0F1A2E;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">' + (i+1) + '</span>' + a + '</div>'; }).join('') +
+        '</div>' +
+        (response.notificationCNILTemplate ? '<div class="mb12"><div class="fw7 fs12 c-navy mb8">📨 Modèle notification CNIL</div>' +
+          '<textarea readonly style="width:100%;min-height:140px;padding:12px;border:1px solid rgba(15,26,46,.15);border-radius:8px;font-family:DM Mono,monospace;font-size:11px;background:#FAFBFC;box-sizing:border-box;line-height:1.6">' + response.notificationCNILTemplate + '</textarea>' +
+        '</div>' : '') +
+        (response.notificationPersonnesTemplate ? '<div class="mb12"><div class="fw7 fs12 c-navy mb8">📧 Modèle notification personnes</div>' +
+          '<textarea readonly style="width:100%;min-height:140px;padding:12px;border:1px solid rgba(15,26,46,.15);border-radius:8px;font-family:DM Mono,monospace;font-size:11px;background:#FAFBFC;box-sizing:border-box;line-height:1.6">' + response.notificationPersonnesTemplate + '</textarea>' +
+        '</div>' : '') +
+        '<div class="flexb" style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(15,26,46,.08)">' +
+          '<button class="btn btn-ghost btn-sm" onclick="toast(\'Modification — Phase 2\',\'var(--amber)\')">✏ Ajuster</button>' +
+          '<button class="btn btn-primary btn-sm" onclick="toast(\'Violation enregistrée dans le registre\',\'var(--green)\')">✓ Enregistrer</button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    return '';
+  }
+
+  window.dpoxCopyText = function(type) {
+    if (typeof toast === 'function') toast('Modèle copié dans le presse-papier', 'var(--green)');
+  };
+
+  // ════════════════════════════════════════════════════════════════════════
+  // ENRICHIR LE RENDERER AIPD EXISTANT
+  // ════════════════════════════════════════════════════════════════════════
+  var originalAIPDRenderer = CCO_RENDERERS['rgpd-aipd'];
+  CCO_RENDERERS['rgpd-aipd'] = function() {
+    if (originalAIPDRenderer) originalAIPDRenderer();
+    var t = document.getElementById('ctab-rgpd-aipd');
     if (!t) return;
+
+    // Injecter avant le contenu existant : auto-détection + IA copilot
+    var alerts = dpoxDetectAIPDRisks();
+    var enrichment =
+      dpoxRenderAlertBanner(alerts, 'aipd') +
+      dpoxRenderCopilotPanel('aipd',
+        'Décrivez votre projet de traitement en quelques phrases. Exemples :\n' +
+        '— "Nous voulons installer la reconnaissance faciale à l\'entrée du siège pour 800 salariés"\n' +
+        '— "Mise en place d\'un scoring IA pour évaluer les candidats au recrutement"\n' +
+        '— "Géolocalisation des véhicules de la flotte commerciale"');
+
+    // Insérer après le ph mais avant le pb existant
+    var pbStart = t.innerHTML.indexOf('<div class="pb">');
+    if (pbStart > 0) {
+      var pbContentStart = pbStart + 16;
+      t.innerHTML = t.innerHTML.substring(0, pbContentStart) + enrichment + t.innerHTML.substring(pbContentStart);
+    }
+  };
+
+  // ════════════════════════════════════════════════════════════════════════
+  // ENRICHIR LE RENDERER DROITS EXISTANT
+  // ════════════════════════════════════════════════════════════════════════
+  var originalDroitsRenderer = CCO_RENDERERS['rgpd-droits'];
+  CCO_RENDERERS['rgpd-droits'] = function() {
+    if (originalDroitsRenderer) originalDroitsRenderer();
+    var t = document.getElementById('ctab-rgpd-droits');
+    if (!t) return;
+
+    var alerts = dpoxDetectDroitsRisks();
+    var enrichment =
+      dpoxRenderAlertBanner(alerts, 'droit') +
+      dpoxRenderCopilotPanel('droit',
+        'Décrivez la demande reçue. Exemples :\n' +
+        '— "Un ancien salarié parti il y a 6 ans demande l\'effacement complet de ses données"\n' +
+        '— "Un client demande une copie de toutes les données que nous détenons sur lui"\n' +
+        '— "Une personne s\'oppose à recevoir notre newsletter et veut être supprimée des fichiers marketing"');
+
+    var pbStart = t.innerHTML.indexOf('<div class="pb">');
+    if (pbStart > 0) {
+      var pbContentStart = pbStart + 16;
+      t.innerHTML = t.innerHTML.substring(0, pbContentStart) + enrichment + t.innerHTML.substring(pbContentStart);
+    }
+  };
+
+  // ════════════════════════════════════════════════════════════════════════
+  // NOUVEAU MODULE : VIOLATIONS 72H
+  // ════════════════════════════════════════════════════════════════════════
+  CCO_RENDERERS['rgpd-violations'] = function() {
+    var t = document.getElementById('ctab-rgpd-violations');
+    if (!t) return;
+
+    var totalViolations = RGPD_VIOLATIONS.length;
+    var enCours = RGPD_VIOLATIONS.filter(function(v){return v.statut === 'en_cours';}).length;
+    var notifCNIL12mois = RGPD_VIOLATIONS.filter(function(v){return v.notification_cnil;}).length;
+    var personnesImpactees = RGPD_VIOLATIONS.reduce(function(s, v){return s + v.personnes;}, 0);
+
+    var alerts = dpoxDetectViolationsRisks();
 
     t.innerHTML =
       '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · ENGAGEMENTS</div>' +
-        '<h1 class="ph-title">Delegation of Authority (DOA)</h1>' +
-        '<div class="ph-sub">Matrice de délégation L1-L5 · 5 catégories · Conforme COSO</div>' +
+        '<div class="ph-eye">RGPD · ART. 33-34</div>' +
+        '<h1 class="ph-title">Violations de données (72h)</h1>' +
+        '<div class="ph-sub">Notification CNIL · Information des personnes · Compteur 72 heures</div>' +
       '</div>' +
       '<div class="pb">' +
+        dpoxRenderAlertBanner(alerts, 'violation') +
+        dpoxRenderCopilotPanel('violation',
+          'Décrivez l\'incident en quelques phrases. Exemples :\n' +
+          '— "Un ordinateur portable contenant la liste des 200 clients VIP a été volé hier soir"\n' +
+          '— "Un email RH avec les fiches de paie a été envoyé par erreur à toute la société"\n' +
+          '— "Tentative de phishing réussie : un comptable a cliqué sur un lien et 1500 emails ont fuité"') +
         '<div class="flexb mb20">' +
           '<div class="g4" style="flex:1">' +
-            kpiBlock('5', 'Catégories', 'CAPEX, OPEX, Commercial, RH, Contrats', 'var(--navy)') +
-            kpiBlock('5', 'Niveaux', 'L1 → L5', 'var(--navy)') +
-            kpiBlock('25', 'Seuils définis', '5×5 matrice', 'var(--green)') +
-            kpiBlock('98%', 'Conformité', '12 mois glissants', 'var(--green)') +
+            kpiBlock(totalViolations, 'Violations 12 mois', 'Tracées', 'var(--navy)') +
+            kpiBlock(enCours, 'En cours', '⏰ Compteur 72h', enCours > 0 ? 'var(--red)' : 'var(--green)') +
+            kpiBlock(notifCNIL12mois, 'Notifications CNIL', '12 derniers mois', 'var(--amber)') +
+            kpiBlock(personnesImpactees.toLocaleString('fr-FR'), 'Personnes impactées', 'Cumulé', 'var(--navy)') +
           '</div>' +
           '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportDOA()">📄 Export PDF</button>' +
-            '<button class="btn btn-primary btn-sm" onclick="toast(\'Édition DOA — Phase 2\',\'var(--amber)\')">Éditer matrice</button>' +
+            '<button class="btn btn-ghost btn-sm" onclick="dpoxExportViolations()">📄 Export PDF</button>' +
+            '<button class="btn btn-primary btn-sm" onclick="document.getElementById(\'dpox-input-violation\').focus()">🚨 Déclarer une violation</button>' +
           '</div>' +
         '</div>' +
         '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">Matrice DOA complète</div>' +
+          '<div class="fw7 fs13 c-navy mb14">Registre des violations (' + RGPD_VIOLATIONS.length + ')</div>' +
           '<table class="tbl">' +
             '<thead><tr>' +
-              '<th>Catégorie</th><th>L1</th><th>L2</th><th>L3</th><th>L4</th><th>L5</th>' +
+              '<th>ID</th><th>Date</th><th>Type</th><th>Personnes</th><th>V × G</th><th>Notif CNIL</th><th>Notif personnes</th><th>Statut</th>' +
             '</tr></thead>' +
             '<tbody>' +
-              IC_DOA.map(function(r) {
+              RGPD_VIOLATIONS.map(function(v) {
+                var sig = dpoxRiskSig(v.vraisemblance, v.gravite);
+                var statSig = v.statut === 'cloturee' ? 's-g' : 's-r';
+                var statLabel = v.statut === 'cloturee' ? '✓ Clôturée' : '⏰ ' + v.countdown_h + 'h restantes';
                 return '<tr>' +
-                  '<td class="fw7 c-navy">' + r.categorie + '</td>' +
-                  '<td><div class="fw7 fs12">' + r.l1 + '</div><div class="fs11 c-muted">' + r.validateurs.l1 + '</div></td>' +
-                  '<td><div class="fw7 fs12">' + r.l2 + '</div><div class="fs11 c-muted">' + r.validateurs.l2 + '</div></td>' +
-                  '<td><div class="fw7 fs12">' + r.l3 + '</div><div class="fs11 c-muted">' + r.validateurs.l3 + '</div></td>' +
-                  '<td><div class="fw7 fs12">' + r.l4 + '</div><div class="fs11 c-muted">' + r.validateurs.l4 + '</div></td>' +
-                  '<td><div class="fw7 fs12">' + r.l5 + '</div><div class="fs11 c-muted">' + r.validateurs.l5 + '</div></td>' +
+                  '<td class="mono fs11 c-muted">' + v.id + '</td>' +
+                  '<td class="fs11">' + v.date + '<br><span class="c-muted">' + v.heure + '</span></td>' +
+                  '<td class="fw7 fs12 c-navy">' + v.type + '</td>' +
+                  '<td class="mono fw7 fs12">' + v.personnes.toLocaleString('fr-FR') + '</td>' +
+                  '<td><span class="sig ' + sig + '">V' + v.vraisemblance + ' · G' + v.gravite + '</span></td>' +
+                  '<td>' + (v.notification_cnil ? '<span class="c-red fw7">✓ Faite</span>' : '<span class="c-muted">Non requise</span>') + '</td>' +
+                  '<td>' + (v.notification_personnes ? '<span class="c-red fw7">✓ Faite</span>' : '<span class="c-muted">Non requise</span>') + '</td>' +
+                  '<td><span class="sig ' + statSig + '">' + statLabel + '</span></td>' +
                 '</tr>';
               }).join('') +
             '</tbody>' +
@@ -17780,979 +18197,109 @@ function cosDoInvite() {
       '</div>';
   };
 
-  // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 2 : SOD
-  // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-sod'] = function() {
-    var t = document.getElementById('ctab-ic-sod');
-    if (!t) return;
-    var k = icGlobalKPIs();
-
-    t.innerHTML =
-      '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · ENGAGEMENTS</div>' +
-        '<h1 class="ph-title">Segregation of Duties (SOD)</h1>' +
-        '<div class="ph-sub">Matrice des incompatibilités fonctionnelles · 4-eyes principle</div>' +
-      '</div>' +
-      '<div class="pb">' +
-        '<div class="flexb mb20">' +
-          '<div class="g4" style="flex:1">' +
-            kpiBlock(IC_SOD.length, 'Risques cartographiés', '8 incompatibilités clés', 'var(--navy)') +
-            kpiBlock(IC_SOD.filter(function(s){return s.criticite==='high';}).length, 'Criticité haute', 'Surveillance continue', 'var(--red)') +
-            kpiBlock(k.sodViolations, 'Violations actives', k.sodViolations > 0 ? 'Action requise' : 'RAS', k.sodViolations > 0 ? 'var(--red)' : 'var(--green)') +
-            kpiBlock(IC_SOD.filter(function(s){return s.statut==='controle';}).length, 'Sous contrôle', 'Mitigation active', 'var(--green)') +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportSOD()">📄 Export PDF</button>' +
-            '<button class="btn btn-primary btn-sm" onclick="toast(\'Audit SOD — Phase 2\',\'var(--amber)\')">Lancer audit</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">Matrice des incompatibilités (' + IC_SOD.length + ')</div>' +
-          '<table class="tbl">' +
-            '<thead><tr>' +
-              '<th>ID</th><th>Risque</th><th>Criticité</th><th>Impact</th><th>Mitigation</th><th>Statut</th>' +
-            '</tr></thead>' +
-            '<tbody>' +
-              IC_SOD.map(function(s) {
-                return '<tr>' +
-                  '<td class="mono fs11 c-muted">' + s.id + '</td>' +
-                  '<td class="fw7 fs12 c-navy">' + s.risque + '</td>' +
-                  '<td><span class="sig ' + icRiskSig(s.criticite) + '">' + icRiskLabel(s.criticite) + '</span></td>' +
-                  '<td class="fs11">' + s.impact + '</td>' +
-                  '<td class="fs11 c-muted">' + s.mitigation + '</td>' +
-                  '<td><span class="sig ' + icSigClass(s.statut) + '">' + (s.statut === 'violation' ? '⚠ Violation' : '✓ Contrôlé') + '</span></td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-  };
-
-  // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 3 : PR/PO
-  // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-prpo'] = function() {
-    var t = document.getElementById('ctab-ic-prpo');
-    if (!t) return;
-
-    var k = icGlobalKPIs();
-    var totalMontant = IC_PRPO.reduce(function(s, p){return s + p.montant;}, 0);
-
-    t.innerHTML =
-      '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · ENGAGEMENTS</div>' +
-        '<h1 class="ph-title">Engagements de dépenses (PR/PO)</h1>' +
-        '<div class="ph-sub">Workflow Purchase Request → PO → Réception → Facture</div>' +
-      '</div>' +
-      '<div class="pb">' +
-        '<div class="flexb mb20">' +
-          '<div class="g4" style="flex:1">' +
-            kpiBlock(IC_PRPO.length, 'PR du mois', 'Total: ' + fmtMoney(totalMontant), 'var(--navy)') +
-            kpiBlock(k.prpoPending, 'En attente', 'Validation requise', k.prpoPending > 0 ? 'var(--amber)' : 'var(--green)') +
-            kpiBlock(IC_PRPO.filter(function(p){return p.statut==='approved';}).length, 'Approuvés', '', 'var(--green)') +
-            kpiBlock(IC_PRPO.filter(function(p){return p.statut==='rejected';}).length, 'Rejetés', '', 'var(--red)') +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportPRPO()">📄 Export PDF</button>' +
-            '<button class="btn btn-primary btn-sm" onclick="toast(\'Nouvelle PR — Phase 2\',\'var(--amber)\')">+ Nouvelle PR</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">Purchase Requests récentes (' + IC_PRPO.length + ')</div>' +
-          '<table class="tbl">' +
-            '<thead><tr>' +
-              '<th>ID</th><th>Date</th><th>Demandeur</th><th>Catégorie</th><th>Fournisseur</th><th>Montant</th><th>Statut</th>' +
-            '</tr></thead>' +
-            '<tbody>' +
-              IC_PRPO.map(function(p) {
-                var statutLabel = p.statut === 'approved' ? '✓ Approuvé' :
-                                  p.statut === 'rejected' ? '✗ Rejeté' :
-                                  p.statut === 'pending_l3' ? '⏳ Attente L3 (CFO)' :
-                                  p.statut === 'pending_l4' ? '⏳ Attente L4 (CEO)' :
-                                  p.statut === 'pending_l5' ? '⏳ Attente L5 (Conseil)' : p.statut;
-                return '<tr>' +
-                  '<td class="mono fs11 c-muted">' + p.id + '</td>' +
-                  '<td class="fs11">' + p.date + '</td>' +
-                  '<td class="fw7 fs12 c-navy">' + p.demandeur + '</td>' +
-                  '<td><span class="sig" style="background:rgba(15,26,46,.06);color:var(--steel)">' + p.categorie + '</span></td>' +
-                  '<td class="fs11">' + p.fournisseur + '</td>' +
-                  '<td class="mono fw7 fs12 c-navy">' + fmtMoney(p.montant) + '</td>' +
-                  '<td><span class="sig ' + icSigClass(p.statut) + '">' + statutLabel + '</span></td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-  };
-
-  // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 4 : Contrats
-  // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-contrats'] = function() {
-    var t = document.getElementById('ctab-ic-contrats');
-    if (!t) return;
-    var totalValeur = IC_CONTRATS.reduce(function(s, c){return s + c.valeur;}, 0);
-
-    t.innerHTML =
-      '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · ENGAGEMENTS</div>' +
-        '<h1 class="ph-title">Approbation des contrats</h1>' +
-        '<div class="ph-sub">Circuit Legal → Finance → Métier selon valeur et risque</div>' +
-      '</div>' +
-      '<div class="pb">' +
-        '<div class="flexb mb20">' +
-          '<div class="g4" style="flex:1">' +
-            kpiBlock(IC_CONTRATS.length, 'Contrats actifs', 'Total: ' + fmtMoney(totalValeur), 'var(--navy)') +
-            kpiBlock(IC_CONTRATS.filter(function(c){return c.statut==='signe';}).length, 'Signés', '', 'var(--green)') +
-            kpiBlock(IC_CONTRATS.filter(function(c){return c.statut.indexOf('attente')===0 || c.statut==='en_negociation';}).length, 'En cours', 'Workflow actif', 'var(--amber)') +
-            kpiBlock(IC_CONTRATS.filter(function(c){return c.risque==='high';}).length, 'Risque élevé', 'Surveillance Legal', 'var(--red)') +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportContrats()">📄 Export PDF</button>' +
-            '<button class="btn btn-primary btn-sm" onclick="toast(\'Nouveau contrat — Phase 2\',\'var(--amber)\')">+ Nouveau contrat</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">Pipeline des contrats (' + IC_CONTRATS.length + ')</div>' +
-          '<table class="tbl">' +
-            '<thead><tr>' +
-              '<th>ID</th><th>Objet</th><th>Valeur</th><th>Risque</th><th>Circuit</th><th>Statut</th>' +
-            '</tr></thead>' +
-            '<tbody>' +
-              IC_CONTRATS.map(function(c) {
-                var statutLabel = c.statut === 'signe' ? '✓ Signé' :
-                                  c.statut === 'en_negociation' ? '⏳ Négociation' :
-                                  c.statut === 'attente_signature' ? '⏳ Attente signature' :
-                                  c.statut === 'attente_conseil' ? '⏳ Attente Conseil' : c.statut;
-                return '<tr>' +
-                  '<td class="mono fs11 c-muted">' + c.id + '</td>' +
-                  '<td class="fw7 fs12 c-navy">' + c.objet + '</td>' +
-                  '<td class="mono fw7 fs12">' + fmtMoney(c.valeur) + '</td>' +
-                  '<td><span class="sig ' + icRiskSig(c.risque) + '">' + icRiskLabel(c.risque) + '</span></td>' +
-                  '<td class="fs11 c-muted">' + c.circuit + '</td>' +
-                  '<td><span class="sig ' + icSigClass(c.statut) + '">' + statutLabel + '</span></td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-  };
-
-  // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 5 : Exceptions DOA
-  // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-exceptions'] = function() {
-    var t = document.getElementById('ctab-ic-exceptions');
-    if (!t) return;
-
-    t.innerHTML =
-      '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · ENGAGEMENTS</div>' +
-        '<h1 class="ph-title">Exceptions DOA</h1>' +
-        '<div class="ph-sub">Décisions hors-circuit standard · Documentation post-validation obligatoire</div>' +
-      '</div>' +
-      '<div class="pb">' +
-        '<div class="flexb mb20">' +
-          '<div class="g4" style="flex:1">' +
-            kpiBlock(IC_EXCEPTIONS.length, '12 derniers mois', 'Tracées', 'var(--navy)') +
-            kpiBlock(IC_EXCEPTIONS.filter(function(e){return e.statut==='approuve_post';}).length, 'Validées post', 'Avec justification', 'var(--green)') +
-            kpiBlock('100%', 'Documentées', 'Conformité audit', 'var(--green)') +
-            kpiBlock('< 1%', 'Taux d\'exception', 'vs total décisions DOA', 'var(--green)') +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportExceptions()">📄 Export PDF</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">Registre des exceptions (' + IC_EXCEPTIONS.length + ')</div>' +
-          '<table class="tbl">' +
-            '<thead><tr>' +
-              '<th>ID</th><th>Date</th><th>Demandeur</th><th>Cas</th><th>Montant</th><th>DOA normale</th><th>Reçu</th><th>Justification</th>' +
-            '</tr></thead>' +
-            '<tbody>' +
-              IC_EXCEPTIONS.map(function(e) {
-                return '<tr>' +
-                  '<td class="mono fs11 c-muted">' + e.id + '</td>' +
-                  '<td class="fs11">' + e.date + '</td>' +
-                  '<td class="fw7 fs12 c-navy">' + e.demandeur + '</td>' +
-                  '<td class="fs11">' + e.cas + '</td>' +
-                  '<td class="mono fw7 fs12">' + fmtMoney(e.montant) + '</td>' +
-                  '<td class="fs11 c-muted">' + e.niveau_normal + '</td>' +
-                  '<td class="fs11 fw7">' + e.validation_recue + '</td>' +
-                  '<td class="fs11 c-muted" style="max-width:280px">' + e.justification + '</td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-  };
-
-  // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 6 : Clôture
-  // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-cloture'] = function() {
-    var t = document.getElementById('ctab-ic-cloture');
-    if (!t) return;
-
-    var done = IC_CLOTURE.filter(function(c){return c.statut==='fait';}).length;
-    var inProgress = IC_CLOTURE.filter(function(c){return c.statut==='en_cours';}).length;
-    var todo = IC_CLOTURE.filter(function(c){return c.statut==='a_faire';}).length;
-    var pctDone = Math.round(done / IC_CLOTURE.length * 100);
-
-    t.innerHTML =
-      '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · PROCESS FINANCIERS</div>' +
-        '<h1 class="ph-title">Clôture mensuelle</h1>' +
-        '<div class="ph-sub">Checklist complète · Owner par étape · Deadline J+5</div>' +
-      '</div>' +
-      '<div class="pb">' +
-        '<div class="flexb mb20">' +
-          '<div class="g4" style="flex:1">' +
-            kpiBlock(pctDone + '%', 'Avancement', done + '/' + IC_CLOTURE.length + ' étapes', pctColor(pctDone)) +
-            kpiBlock(done, 'Faites', '', 'var(--green)') +
-            kpiBlock(inProgress, 'En cours', '', 'var(--amber)') +
-            kpiBlock(todo, 'À faire', '', 'var(--red)') +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportCloture()">📄 Export PDF</button>' +
-            '<button class="btn btn-primary btn-sm" onclick="toast(\'Lancer clôture — Phase 2\',\'var(--amber)\')">Lancer clôture</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">Checklist clôture du mois en cours</div>' +
-          '<table class="tbl">' +
-            '<thead><tr>' +
-              '<th>ID</th><th>Étape</th><th>Owner</th><th>Deadline</th><th>Risque</th><th>Statut</th>' +
-            '</tr></thead>' +
-            '<tbody>' +
-              IC_CLOTURE.map(function(c) {
-                var label = c.statut === 'fait' ? '✓ Fait' : c.statut === 'en_cours' ? '⏳ En cours' : '⚪ À faire';
-                return '<tr>' +
-                  '<td class="mono fs11 c-muted">' + c.id + '</td>' +
-                  '<td class="fw7 fs12 c-navy">' + c.etape + '</td>' +
-                  '<td class="fs11">' + c.owner + '</td>' +
-                  '<td class="mono fs12 c-amber fw7">' + c.deadline_jour + '</td>' +
-                  '<td><span class="sig ' + icRiskSig(c.risque) + '">' + icRiskLabel(c.risque) + '</span></td>' +
-                  '<td><span class="sig ' + icSigClass(c.statut) + '">' + label + '</span></td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-  };
-
-  // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 7 : Réconciliations
-  // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-reconciliations'] = function() {
-    var t = document.getElementById('ctab-ic-reconciliations');
-    if (!t) return;
-
-    var totalEcart = IC_RECONCILIATIONS.reduce(function(s, r){return s + Math.abs(r.ecart);}, 0);
-    var aInvestiguer = IC_RECONCILIATIONS.filter(function(r){return r.statut==='a_investiguer';}).length;
-
-    t.innerHTML =
-      '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · PROCESS FINANCIERS</div>' +
-        '<h1 class="ph-title">Réconciliations</h1>' +
-        '<div class="ph-sub">Bancaires · Comptables · Stocks · Intercos</div>' +
-      '</div>' +
-      '<div class="pb">' +
-        '<div class="flexb mb20">' +
-          '<div class="g4" style="flex:1">' +
-            kpiBlock(IC_RECONCILIATIONS.length, 'Réconciliations actives', 'Suivi continu', 'var(--navy)') +
-            kpiBlock(IC_RECONCILIATIONS.filter(function(r){return r.statut==='ok';}).length, 'OK', '', 'var(--green)') +
-            kpiBlock(aInvestiguer, 'À investiguer', '', aInvestiguer > 0 ? 'var(--red)' : 'var(--green)') +
-            kpiBlock(fmtMoney(totalEcart), 'Écart total', 'Cumul absolu', totalEcart > 10000 ? 'var(--amber)' : 'var(--green)') +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportReconciliations()">📄 Export PDF</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">Réconciliations (' + IC_RECONCILIATIONS.length + ')</div>' +
-          '<table class="tbl">' +
-            '<thead><tr>' +
-              '<th>ID</th><th>Type</th><th>Fréquence</th><th>Dernière</th><th>Écart</th><th>Statut</th>' +
-            '</tr></thead>' +
-            '<tbody>' +
-              IC_RECONCILIATIONS.map(function(r) {
-                var label = r.statut === 'ok' ? '✓ OK' : r.statut === 'a_investiguer' ? '⚠ Investiguer' : '✓ Documenté';
-                var ecartColor = Math.abs(r.ecart) > 5000 ? 'c-red' : Math.abs(r.ecart) > 0 ? 'c-amber' : 'c-green';
-                return '<tr>' +
-                  '<td class="mono fs11 c-muted">' + r.id + '</td>' +
-                  '<td class="fw7 fs12 c-navy">' + r.type + '</td>' +
-                  '<td class="fs11">' + r.frequence + '</td>' +
-                  '<td class="fs11">' + r.dernier + '</td>' +
-                  '<td class="mono fw7 fs12 ' + ecartColor + '">' + (r.ecart === 0 ? '0 €' : fmtMoney(r.ecart)) + '</td>' +
-                  '<td><span class="sig ' + icSigClass(r.statut) + '">' + label + '</span></td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-  };
-
-  // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 8 : Inventaires
-  // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-inventaires'] = function() {
-    var t = document.getElementById('ctab-ic-inventaires');
-    if (!t) return;
-
-    var totalEcart = IC_INVENTAIRES.reduce(function(s, i){return s + Math.abs(i.ecart_eur);}, 0);
-    var avgEcartPct = (IC_INVENTAIRES.reduce(function(s, i){return s + i.ecart_pct;}, 0) / IC_INVENTAIRES.length).toFixed(1);
-
-    t.innerHTML =
-      '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · PROCESS FINANCIERS</div>' +
-        '<h1 class="ph-title">Inventaires physiques</h1>' +
-        '<div class="ph-sub">Planning · Périmètres · Écarts</div>' +
-      '</div>' +
-      '<div class="pb">' +
-        '<div class="flexb mb20">' +
-          '<div class="g4" style="flex:1">' +
-            kpiBlock(IC_INVENTAIRES.length, 'Inventaires 12 mois', 'Multi-sites', 'var(--navy)') +
-            kpiBlock(avgEcartPct + '%', 'Écart moyen', 'vs cible 1%', avgEcartPct > 2 ? 'var(--red)' : avgEcartPct > 1 ? 'var(--amber)' : 'var(--green)') +
-            kpiBlock(fmtMoney(totalEcart), 'Écart total cumulé', 'Absolu', 'var(--amber)') +
-            kpiBlock(IC_INVENTAIRES.filter(function(i){return i.statut==='investigation';}).length, 'En investigation', '', 'var(--red)') +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportInventaires()">📄 Export PDF</button>' +
-            '<button class="btn btn-primary btn-sm" onclick="toast(\'Planifier inventaire — Phase 2\',\'var(--amber)\')">+ Planifier</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">Inventaires (' + IC_INVENTAIRES.length + ')</div>' +
-          '<table class="tbl">' +
-            '<thead><tr>' +
-              '<th>ID</th><th>Site</th><th>Date</th><th>Périmètre</th><th>Écart %</th><th>Écart €</th><th>Statut</th>' +
-            '</tr></thead>' +
-            '<tbody>' +
-              IC_INVENTAIRES.map(function(i) {
-                var label = i.statut === 'cloture' ? '✓ Clôturé' : i.statut === 'documente' ? '✓ Documenté' : '🔍 Investigation';
-                var pctColor2 = i.ecart_pct > 2 ? 'c-red' : i.ecart_pct > 1 ? 'c-amber' : 'c-green';
-                return '<tr>' +
-                  '<td class="mono fs11 c-muted">' + i.id + '</td>' +
-                  '<td class="fw7 fs12 c-navy">' + i.site + '</td>' +
-                  '<td class="fs11">' + i.date + '</td>' +
-                  '<td class="fs11">' + i.perimetre + '</td>' +
-                  '<td class="fw7 ' + pctColor2 + '">' + i.ecart_pct + '%</td>' +
-                  '<td class="mono fs12">' + fmtMoney(i.ecart_eur) + '</td>' +
-                  '<td><span class="sig ' + icSigClass(i.statut) + '">' + label + '</span></td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-  };
-
-  // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 9 : Recouvrement
-  // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-recouvrement'] = function() {
-    var t = document.getElementById('ctab-ic-recouvrement');
-    if (!t) return;
-
-    var totalEnCours = IC_RECOUVREMENT.reduce(function(s, c){return s + c.montant;}, 0);
-    var dsoMoyen = Math.round(IC_RECOUVREMENT.reduce(function(s, c){return s + c.dso;}, 0) / IC_RECOUVREMENT.length);
-    var provisions = IC_RECOUVREMENT.filter(function(c){return c.provision;}).length;
-
-    t.innerHTML =
-      '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · PROCESS FINANCIERS</div>' +
-        '<h1 class="ph-title">Recouvrement & DSO</h1>' +
-        '<div class="ph-sub">Escalade · Créances douteuses · Provisions</div>' +
-      '</div>' +
-      '<div class="pb">' +
-        '<div class="flexb mb20">' +
-          '<div class="g4" style="flex:1">' +
-            kpiBlock(fmtMoney(totalEnCours), 'En cours', IC_RECOUVREMENT.length + ' clients', 'var(--navy)') +
-            kpiBlock(dsoMoyen + 'j', 'DSO moyen', dsoMoyen > 60 ? 'À optimiser' : 'Conforme', dsoMoyen > 60 ? 'var(--red)' : 'var(--green)') +
-            kpiBlock(provisions, 'Provisionnés', 'Créances douteuses', provisions > 0 ? 'var(--amber)' : 'var(--green)') +
-            kpiBlock(IC_RECOUVREMENT.filter(function(c){return c.escalade==='contentieux';}).length, 'En contentieux', '', 'var(--red)') +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportRecouvrement()">📄 Export PDF</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">Créances en cours (' + IC_RECOUVREMENT.length + ')</div>' +
-          '<table class="tbl">' +
-            '<thead><tr>' +
-              '<th>ID</th><th>Client</th><th>Montant</th><th>DSO</th><th>Escalade</th><th>Provision</th><th>Statut</th>' +
-            '</tr></thead>' +
-            '<tbody>' +
-              IC_RECOUVREMENT.map(function(c) {
-                var labelEsc = { aucune: '—', rappel_1: 'Rappel 1', rappel_2: 'Rappel 2', mise_en_demeure: 'Mise en demeure', contentieux: 'Contentieux' };
-                var labelStatut = c.statut === 'normal' ? '✓ Normal' : c.statut === 'relance' ? '⏳ Relance' : c.statut === 'litige' ? '⚠ Litige' : '⚠ Douteux';
-                var dsoCol = c.dso > 90 ? 'c-red' : c.dso > 60 ? 'c-amber' : 'c-green';
-                return '<tr>' +
-                  '<td class="mono fs11 c-muted">' + c.id + '</td>' +
-                  '<td class="fw7 fs12 c-navy">' + c.client + '</td>' +
-                  '<td class="mono fw7 fs12">' + fmtMoney(c.montant) + '</td>' +
-                  '<td class="fw7 ' + dsoCol + '">' + c.dso + 'j</td>' +
-                  '<td class="fs11">' + labelEsc[c.escalade] + '</td>' +
-                  '<td>' + (c.provision ? '<span class="c-amber fw7">✓</span>' : '—') + '</td>' +
-                  '<td><span class="sig ' + icSigClass(c.statut) + '">' + labelStatut + '</span></td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-  };
-
-  // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 10 : Cash management
-  // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-cash'] = function() {
-    var t = document.getElementById('ctab-ic-cash');
-    if (!t) return;
-    var k = icGlobalKPIs();
-
-    t.innerHTML =
-      '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · PROCESS FINANCIERS</div>' +
-        '<h1 class="ph-title">Cash management</h1>' +
-        '<div class="ph-sub">Limites · Signatures · Contrôles 4-eyes · Trésorerie</div>' +
-      '</div>' +
-      '<div class="pb">' +
-        '<div class="flexb mb20">' +
-          '<div class="g4" style="flex:1">' +
-            kpiBlock(IC_CASH.length, 'Contrôles actifs', 'Continus', 'var(--navy)') +
-            kpiBlock(IC_CASH.filter(function(c){return c.statut==='ok';}).length, 'OK', '', 'var(--green)') +
-            kpiBlock(k.cashWarning, 'Warnings', 'À surveiller', k.cashWarning > 0 ? 'var(--amber)' : 'var(--green)') +
-            kpiBlock('100%', 'Couverture', '4-eyes obligatoire > 100K€', 'var(--green)') +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportCash()">📄 Export PDF</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">Contrôles cash (' + IC_CASH.length + ')</div>' +
-          '<table class="tbl">' +
-            '<thead><tr>' +
-              '<th>ID</th><th>Contrôle</th><th>Seuil</th><th>Dernier test</th><th>Alerte</th><th>Statut</th>' +
-            '</tr></thead>' +
-            '<tbody>' +
-              IC_CASH.map(function(c) {
-                var label = c.statut === 'ok' ? '✓ OK' : c.statut === 'warning' ? '⚠ Warning' : '✗ KO';
-                return '<tr>' +
-                  '<td class="mono fs11 c-muted">' + c.id + '</td>' +
-                  '<td class="fw7 fs12 c-navy">' + c.controle + '</td>' +
-                  '<td class="mono fs12 fw7">' + c.seuil + '</td>' +
-                  '<td class="fs11">' + c.dernier_test + '</td>' +
-                  '<td class="fs11 c-muted">' + c.alerte + '</td>' +
-                  '<td><span class="sig ' + icSigClass(c.statut) + '">' + label + '</span></td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-  };
-
-  // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 11 : Accès SI / IAM
-  // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-iam'] = function() {
-    var t = document.getElementById('ctab-ic-iam');
-    if (!t) return;
-    var k = icGlobalKPIs();
-
-    var totalExceptions = IC_IAM.reduce(function(s, i){return s + i.exceptions;}, 0);
-
-    t.innerHTML =
-      '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · IT &amp; DATA</div>' +
-        '<h1 class="ph-title">Accès SI / IAM</h1>' +
-        '<div class="ph-sub">Joiners-Movers-Leavers · Revues trimestrielles · MFA · Comptes privilégiés</div>' +
-      '</div>' +
-      '<div class="pb">' +
-        '<div class="flexb mb20">' +
-          '<div class="g4" style="flex:1">' +
-            kpiBlock(IC_IAM.length, 'Contrôles IAM', 'Sous monitoring', 'var(--navy)') +
-            kpiBlock(IC_IAM.filter(function(i){return i.statut==='ok';}).length, 'OK', '', 'var(--green)') +
-            kpiBlock(totalExceptions, 'Exceptions 12 mois', 'À traiter', totalExceptions > 5 ? 'var(--red)' : 'var(--amber)') +
-            kpiBlock(k.iamCritical, 'Critiques', 'Action immédiate', k.iamCritical > 0 ? 'var(--red)' : 'var(--green)') +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportIAM()">📄 Export PDF</button>' +
-            '<button class="btn btn-primary btn-sm" onclick="toast(\'Lancer revue accès — Phase 2\',\'var(--amber)\')">Lancer revue</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">Contrôles IAM (' + IC_IAM.length + ')</div>' +
-          '<table class="tbl">' +
-            '<thead><tr>' +
-              '<th>ID</th><th>Contrôle</th><th>Volume 12 mois</th><th>Exceptions</th><th>Dernière revue</th><th>Statut</th>' +
-            '</tr></thead>' +
-            '<tbody>' +
-              IC_IAM.map(function(i) {
-                var label = i.statut === 'ok' ? '✓ OK' : i.statut === 'warning' ? '⚠ Warning' : '✗ Critique';
-                return '<tr>' +
-                  '<td class="mono fs11 c-muted">' + i.id + '</td>' +
-                  '<td class="fw7 fs12 c-navy">' + i.controle + '</td>' +
-                  '<td class="mono fs12">' + i.volume_12mois + '</td>' +
-                  '<td class="mono fw7 fs12 ' + (i.exceptions > 0 ? 'c-red' : 'c-green') + '">' + i.exceptions + '</td>' +
-                  '<td class="fs11">' + i.revue + '</td>' +
-                  '<td><span class="sig ' + icSigClass(i.statut) + '">' + label + '</span></td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-  };
-
-  // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 12 : Master data
-  // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-masterdata'] = function() {
-    var t = document.getElementById('ctab-ic-masterdata');
-    if (!t) return;
-
-    var totalVolume = IC_MASTERDATA.reduce(function(s, m){return s + m.volume_12mois;}, 0);
-    var totalEcarts = IC_MASTERDATA.reduce(function(s, m){return s + m.ecarts;}, 0);
-
-    t.innerHTML =
-      '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · IT &amp; DATA</div>' +
-        '<h1 class="ph-title">Master data integrity</h1>' +
-        '<div class="ph-sub">Création tiers · Modifications IBAN · Référentiels · Plan de comptes</div>' +
-      '</div>' +
-      '<div class="pb">' +
-        '<div class="flexb mb20">' +
-          '<div class="g4" style="flex:1">' +
-            kpiBlock(IC_MASTERDATA.length, 'Référentiels suivis', 'Master data', 'var(--navy)') +
-            kpiBlock(totalVolume, 'Mouvements 12 mois', 'Total', 'var(--navy)') +
-            kpiBlock(totalEcarts, 'Écarts détectés', totalEcarts > 5 ? 'À traiter' : 'Sous contrôle', totalEcarts > 5 ? 'var(--amber)' : 'var(--green)') +
-            kpiBlock(((totalVolume - totalEcarts) / totalVolume * 100).toFixed(1) + '%', 'Conformité', '12 mois glissants', 'var(--green)') +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportMasterData()">📄 Export PDF</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">Référentiels (' + IC_MASTERDATA.length + ')</div>' +
-          '<table class="tbl">' +
-            '<thead><tr>' +
-              '<th>ID</th><th>Type de mouvement</th><th>Volume 12 mois</th><th>Écarts</th><th>Contrôles en place</th><th>Statut</th>' +
-            '</tr></thead>' +
-            '<tbody>' +
-              IC_MASTERDATA.map(function(m) {
-                var label = m.statut === 'ok' ? '✓ OK' : '⚠ Warning';
-                return '<tr>' +
-                  '<td class="mono fs11 c-muted">' + m.id + '</td>' +
-                  '<td class="fw7 fs12 c-navy">' + m.type + '</td>' +
-                  '<td class="mono fs12">' + m.volume_12mois + '</td>' +
-                  '<td class="mono fw7 fs12 ' + (m.ecarts > 0 ? 'c-amber' : 'c-green') + '">' + m.ecarts + '</td>' +
-                  '<td class="fs11 c-muted">' + m.controles + '</td>' +
-                  '<td><span class="sig ' + icSigClass(m.statut) + '">' + label + '</span></td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-  };
-
-  // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 13 : ITGC
-  // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-itgc'] = function() {
-    var t = document.getElementById('ctab-ic-itgc');
-    if (!t) return;
-
-    var avgMaturite = (IC_ITGC.reduce(function(s, i){return s + i.maturite;}, 0) / IC_ITGC.length).toFixed(1);
-
-    t.innerHTML =
-      '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · IT &amp; DATA</div>' +
-        '<h1 class="ph-title">IT General Controls (ITGC)</h1>' +
-        '<div class="ph-sub">Change management · Backup · Patches · SIEM · DRP</div>' +
-      '</div>' +
-      '<div class="pb">' +
-        '<div class="flexb mb20">' +
-          '<div class="g4" style="flex:1">' +
-            kpiBlock(IC_ITGC.length, 'ITGC actifs', 'Couverture COBIT', 'var(--navy)') +
-            kpiBlock(avgMaturite + '/5', 'Maturité moyenne', 'Modèle CMM', avgMaturite >= 4 ? 'var(--green)' : avgMaturite >= 3 ? 'var(--amber)' : 'var(--red)') +
-            kpiBlock(IC_ITGC.filter(function(i){return i.statut==='ok';}).length, 'OK', '', 'var(--green)') +
-            kpiBlock(IC_ITGC.filter(function(i){return i.statut==='warning';}).length, 'Warnings', '', 'var(--amber)') +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportITGC()">📄 Export PDF</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">ITGC (' + IC_ITGC.length + ')</div>' +
-          '<table class="tbl">' +
-            '<thead><tr>' +
-              '<th>ID</th><th>Contrôle</th><th>Fréquence</th><th>Dernier audit</th><th>Maturité</th><th>Statut</th>' +
-            '</tr></thead>' +
-            '<tbody>' +
-              IC_ITGC.map(function(i) {
-                var label = i.statut === 'ok' ? '✓ OK' : '⚠ Warning';
-                var matBars = '';
-                for (var n = 0; n < 5; n++) {
-                  matBars += '<div style="display:inline-block;width:12px;height:6px;margin-right:1px;background:' + (n < i.maturite ? 'var(--green)' : 'rgba(15,26,46,.1)') + '"></div>';
-                }
-                return '<tr>' +
-                  '<td class="mono fs11 c-muted">' + i.id + '</td>' +
-                  '<td class="fw7 fs12 c-navy">' + i.controle + '</td>' +
-                  '<td class="fs11">' + i.frequence + '</td>' +
-                  '<td class="fs11">' + i.dernier_audit + '</td>' +
-                  '<td>' + matBars + ' <span class="fs11 c-muted">' + i.maturite + '/5</span></td>' +
-                  '<td><span class="sig ' + icSigClass(i.statut) + '">' + label + '</span></td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-  };
-
-  // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 14 : Sensitive transactions
-  // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-sensitive'] = function() {
-    var t = document.getElementById('ctab-ic-sensitive');
-    if (!t) return;
-
-    var totalMontant = IC_SENSITIVE.reduce(function(s, t2){return s + t2.montant;}, 0);
-    var attente = IC_SENSITIVE.filter(function(t2){return t2.statut==='attente';}).length;
-
-    t.innerHTML =
-      '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · TRANSVERSE</div>' +
-        '<h1 class="ph-title">Sensitive transactions</h1>' +
-        '<div class="ph-sub">Avoirs · Write-offs · Rabais &gt; seuil · Provisions · Réversions</div>' +
-      '</div>' +
-      '<div class="pb">' +
-        '<div class="flexb mb20">' +
-          '<div class="g4" style="flex:1">' +
-            kpiBlock(IC_SENSITIVE.length, 'Transactions 12 mois', 'Tracées', 'var(--navy)') +
-            kpiBlock(fmtMoney(totalMontant), 'Montant cumulé', '', 'var(--amber)') +
-            kpiBlock(IC_SENSITIVE.filter(function(t2){return t2.statut==='valide';}).length, 'Validées', '4-eyes obligatoire', 'var(--green)') +
-            kpiBlock(attente, 'En attente', '', attente > 0 ? 'var(--amber)' : 'var(--green)') +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportSensitive()">📄 Export PDF</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">Transactions sensibles (' + IC_SENSITIVE.length + ')</div>' +
-          '<table class="tbl">' +
-            '<thead><tr>' +
-              '<th>ID</th><th>Type</th><th>Montant</th><th>Demandeur</th><th>Validation</th><th>Justification</th><th>Statut</th>' +
-            '</tr></thead>' +
-            '<tbody>' +
-              IC_SENSITIVE.map(function(s) {
-                var label = s.statut === 'valide' ? '✓ Validée' : '⏳ Attente';
-                return '<tr>' +
-                  '<td class="mono fs11 c-muted">' + s.id + '</td>' +
-                  '<td class="fw7 fs12 c-navy">' + s.type + '</td>' +
-                  '<td class="mono fw7 fs12">' + fmtMoney(s.montant) + '</td>' +
-                  '<td class="fs11">' + s.demandeur + '</td>' +
-                  '<td class="fs11 fw7">' + s.validation + '</td>' +
-                  '<td class="fs11 c-muted" style="max-width:280px">' + s.justification + '</td>' +
-                  '<td><span class="sig ' + icSigClass(s.statut) + '">' + label + '</span></td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-  };
-
-  // ════════════════════════════════════════════════════════════════════════
-  // RENDERER 15 : BCP/DRP
-  // ════════════════════════════════════════════════════════════════════════
-  CCO_RENDERERS['ic-bcp'] = function() {
-    var t = document.getElementById('ctab-ic-bcp');
-    if (!t) return;
-
-    var avgMaturite = (IC_BCP.reduce(function(s, b){return s + b.maturite;}, 0) / IC_BCP.length).toFixed(1);
-
-    t.innerHTML =
-      '<div class="ph">' +
-        '<div class="ph-eye">CONTRÔLE INTERNE · TRANSVERSE</div>' +
-        '<h1 class="ph-title">Continuité d\'activité (BCP/DRP)</h1>' +
-        '<div class="ph-sub">Plans de continuité · Tests · RTO · RPO · Maturité par processus</div>' +
-      '</div>' +
-      '<div class="pb">' +
-        '<div class="flexb mb20">' +
-          '<div class="g4" style="flex:1">' +
-            kpiBlock(IC_BCP.length, 'Processus critiques', 'Avec BCP/DRP', 'var(--navy)') +
-            kpiBlock(avgMaturite + '/5', 'Maturité moyenne', 'Modèle CMM', avgMaturite >= 4 ? 'var(--green)' : avgMaturite >= 3 ? 'var(--amber)' : 'var(--red)') +
-            kpiBlock(IC_BCP.filter(function(b){return b.maturite >= 4;}).length, 'Niveau 4-5', 'Mature', 'var(--green)') +
-            kpiBlock(IC_BCP.filter(function(b){return b.maturite < 3;}).length, 'À renforcer', 'Plan d\'action', 'var(--red)') +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0">' +
-            '<button class="btn btn-ghost btn-sm" onclick="icExportBCP()">📄 Export PDF</button>' +
-            '<button class="btn btn-primary btn-sm" onclick="toast(\'Lancer test BCP — Phase 2\',\'var(--amber)\')">Test BCP</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="fw7 fs13 c-navy mb14">Plans BCP/DRP (' + IC_BCP.length + ')</div>' +
-          '<table class="tbl">' +
-            '<thead><tr>' +
-              '<th>ID</th><th>Processus</th><th>RTO</th><th>RPO</th><th>Dernier test</th><th>Résultat</th><th>Maturité</th>' +
-            '</tr></thead>' +
-            '<tbody>' +
-              IC_BCP.map(function(b) {
-                var matBars = '';
-                for (var n = 0; n < 5; n++) {
-                  matBars += '<div style="display:inline-block;width:12px;height:6px;margin-right:1px;background:' + (n < b.maturite ? 'var(--green)' : 'rgba(15,26,46,.1)') + '"></div>';
-                }
-                var resColor = b.resultat === 'OK' ? 'c-green' : b.resultat.indexOf('OK') === 0 ? 'c-amber' : 'c-red';
-                return '<tr>' +
-                  '<td class="mono fs11 c-muted">' + b.id + '</td>' +
-                  '<td class="fw7 fs12 c-navy">' + b.processus + '</td>' +
-                  '<td class="mono fs12 fw7">' + b.rto + '</td>' +
-                  '<td class="mono fs12 fw7">' + b.rpo + '</td>' +
-                  '<td class="fs11">' + b.dernier_test + '</td>' +
-                  '<td class="fs11 fw7 ' + resColor + '">' + b.resultat + '</td>' +
-                  '<td>' + matBars + ' <span class="fs11 c-muted">' + b.maturite + '/5</span></td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-  };
-
-  // ════════════════════════════════════════════════════════════════════════
-  // EXPORTS PDF — un export simple par module
-  // ════════════════════════════════════════════════════════════════════════
-
-  function ensureJsPDFForIC() {
+  // Export PDF Violations
+  window.dpoxExportViolations = function() {
     if (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF) {
       if (typeof toast === 'function') toast('⚠ Lib PDF non chargée', 'var(--amber)');
-      return null;
+      return;
     }
-    return window.jspdf.jsPDF;
-  }
-
-  function icPdfHeader(doc, title, subtitle) {
-    doc.setFillColor(15, 26, 46);
-    doc.rect(0, 0, doc.internal.pageSize.getWidth(), 28, 'F');
-    doc.setTextColor(212, 136, 10);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('COMPLIANCEOS · CONTRÔLE INTERNE', 15, 12);
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(15);
-    doc.setFont('helvetica', 'normal');
-    doc.text(title, 15, 22);
-    doc.setFillColor(212, 136, 10);
-    doc.rect(0, 28, doc.internal.pageSize.getWidth(), 1, 'F');
-    doc.setTextColor(100, 116, 139);
-    doc.setFontSize(9);
-    var company = (window._COS_PROFILE && window._COS_PROFILE.entreprise) || 'Entreprise';
-    var today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
-    doc.text(subtitle + ' · ' + company + ' · ' + today, 15, 36);
-    return 44;
-  }
-
-  function icPdfFooter(doc) {
-    var pages = doc.getNumberOfPages();
-    var p = window._COS_PROFILE || window._USER || {};
-    var user = ((p.prenom || '') + ' ' + (p.nom || '')).trim() || 'Utilisateur';
-    var today = new Date().toLocaleDateString('fr-FR');
-    for (var i = 1; i <= pages; i++) {
-      doc.setPage(i);
-      doc.setTextColor(150, 150, 150);
-      doc.setFontSize(8);
-      var w = doc.internal.pageSize.getWidth();
-      doc.text('ComplianceOS · IC · Page ' + i + ' / ' + pages, 15, 290);
-      doc.text('Généré par ' + user + ' le ' + today, w - 15, 290, { align: 'right' });
-    }
-  }
-
-  function icNowFile() {
-    var d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-  }
-
-  function icGenericExport(name, title, subtitle, headers, rows, landscape) {
-    var JsPDF = ensureJsPDFForIC();
-    if (!JsPDF) return;
     try {
-      var doc = new JsPDF({ unit:'mm', format:'a4', orientation: landscape ? 'landscape' : 'portrait' });
-      var y = icPdfHeader(doc, title, subtitle);
+      var doc = new window.jspdf.jsPDF({ unit:'mm', format:'a4', orientation:'landscape' });
+      doc.setFillColor(15, 26, 46);
+      doc.rect(0, 0, 297, 28, 'F');
+      doc.setTextColor(212, 136, 10);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('COMPLIANCEOS', 15, 12);
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(15);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Registre des violations RGPD (Art. 33-34)', 15, 22);
+      doc.setFillColor(212, 136, 10);
+      doc.rect(0, 28, 297, 1, 'F');
+
+      var company = (window._COS_PROFILE && window._COS_PROFILE.entreprise) || 'Entreprise';
+      var today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(9);
+      doc.text('Notifications CNIL · 72 heures · ' + company + ' · ' + today, 15, 36);
+
       doc.autoTable({
-        startY: y,
-        head: [headers],
-        body: rows,
+        startY: 44,
+        head: [['ID', 'Date', 'Heure', 'Type', 'Personnes', 'Vrais.', 'Gravité', 'CNIL', 'Personnes', 'Statut']],
+        body: RGPD_VIOLATIONS.map(function(v) {
+          return [v.id, v.date, v.heure, v.type, v.personnes, v.vraisemblance + '/4', v.gravite + '/4',
+            v.notification_cnil ? 'Faite' : 'Non requise',
+            v.notification_personnes ? 'Faite' : 'Non requise',
+            v.statut];
+        }),
         headStyles: { fillColor: [15, 26, 46], textColor: 255, fontSize: 8 },
         bodyStyles: { fontSize: 8 },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         margin: { left: 15, right: 15 }
       });
-      icPdfFooter(doc);
-      doc.save('ComplianceOS_IC_' + name + '_' + icNowFile() + '.pdf');
-      if (typeof toast === 'function') toast('✓ ' + title + ' exporté', 'var(--green)');
+
+      var p = window._COS_PROFILE || window._USER || {};
+      var user = ((p.prenom || '') + ' ' + (p.nom || '')).trim() || 'DPO';
+      doc.setTextColor(150, 150, 150);
+      doc.setFontSize(8);
+      doc.text('ComplianceOS · RGPD Violations · ' + user + ' · ' + today, 15, 200);
+
+      var d = new Date();
+      var fname = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      doc.save('ComplianceOS_Violations_RGPD_' + fname + '.pdf');
+      if (typeof toast === 'function') toast('✓ Registre violations exporté', 'var(--green)');
     } catch (e) {
-      console.error('[IC PDF]', e);
+      console.error('[Violations PDF]', e);
       if (typeof toast === 'function') toast('Erreur PDF : ' + e.message, 'var(--red)');
     }
-  }
-
-  window.icExportDOA = function() {
-    icGenericExport('DOA', 'Delegation of Authority', 'Matrice L1-L5',
-      ['Catégorie','L1','L2','L3','L4','L5'],
-      IC_DOA.map(function(r){return [r.categorie, r.l1+'\n'+r.validateurs.l1, r.l2+'\n'+r.validateurs.l2, r.l3+'\n'+r.validateurs.l3, r.l4+'\n'+r.validateurs.l4, r.l5+'\n'+r.validateurs.l5];}),
-      true);
-  };
-  window.icExportSOD = function() {
-    icGenericExport('SOD', 'Segregation of Duties', 'Matrice incompatibilités',
-      ['ID','Risque','Criticité','Impact','Mitigation','Statut'],
-      IC_SOD.map(function(s){return [s.id, s.risque, s.criticite, s.impact, s.mitigation, s.statut];}),
-      true);
-  };
-  window.icExportPRPO = function() {
-    icGenericExport('PRPO', 'Engagements de dépenses', 'Workflow PR/PO',
-      ['ID','Date','Demandeur','Catégorie','Fournisseur','Montant','Statut'],
-      IC_PRPO.map(function(p){return [p.id, p.date, p.demandeur, p.categorie, p.fournisseur, fmtMoney(p.montant), p.statut];}),
-      true);
-  };
-  window.icExportContrats = function() {
-    icGenericExport('Contrats', 'Approbation contrats', 'Pipeline',
-      ['ID','Objet','Valeur','Risque','Circuit','Statut'],
-      IC_CONTRATS.map(function(c){return [c.id, c.objet, fmtMoney(c.valeur), c.risque, c.circuit, c.statut];}),
-      true);
-  };
-  window.icExportExceptions = function() {
-    icGenericExport('Exceptions', 'Exceptions DOA', 'Hors-circuit',
-      ['ID','Date','Demandeur','Cas','Montant','Niveau normal','Reçu','Justification'],
-      IC_EXCEPTIONS.map(function(e){return [e.id, e.date, e.demandeur, e.cas, fmtMoney(e.montant), e.niveau_normal, e.validation_recue, e.justification];}),
-      true);
-  };
-  window.icExportCloture = function() {
-    icGenericExport('Cloture', 'Clôture mensuelle', 'Checklist J+5',
-      ['ID','Étape','Owner','Deadline','Risque','Statut'],
-      IC_CLOTURE.map(function(c){return [c.id, c.etape, c.owner, c.deadline_jour, c.risque, c.statut];}),
-      false);
-  };
-  window.icExportReconciliations = function() {
-    icGenericExport('Reconciliations', 'Réconciliations', 'Bancaires & comptables',
-      ['ID','Type','Fréquence','Dernière','Écart','Statut'],
-      IC_RECONCILIATIONS.map(function(r){return [r.id, r.type, r.frequence, r.dernier, fmtMoney(r.ecart), r.statut];}),
-      true);
-  };
-  window.icExportInventaires = function() {
-    icGenericExport('Inventaires', 'Inventaires physiques', 'Multi-sites',
-      ['ID','Site','Date','Périmètre','Écart %','Écart €','Statut'],
-      IC_INVENTAIRES.map(function(i){return [i.id, i.site, i.date, i.perimetre, i.ecart_pct+'%', fmtMoney(i.ecart_eur), i.statut];}),
-      true);
-  };
-  window.icExportRecouvrement = function() {
-    icGenericExport('Recouvrement', 'Recouvrement & DSO', 'Créances en cours',
-      ['ID','Client','Montant','DSO','Escalade','Provision','Statut'],
-      IC_RECOUVREMENT.map(function(c){return [c.id, c.client, fmtMoney(c.montant), c.dso+'j', c.escalade, c.provision?'Oui':'-', c.statut];}),
-      true);
-  };
-  window.icExportCash = function() {
-    icGenericExport('Cash', 'Cash management', 'Contrôles trésorerie',
-      ['ID','Contrôle','Seuil','Dernier test','Alerte','Statut'],
-      IC_CASH.map(function(c){return [c.id, c.controle, c.seuil, c.dernier_test, c.alerte, c.statut];}),
-      true);
-  };
-  window.icExportIAM = function() {
-    icGenericExport('IAM', 'Accès SI / IAM', 'Joiners-Movers-Leavers',
-      ['ID','Contrôle','Volume 12m','Exceptions','Dernière revue','Statut'],
-      IC_IAM.map(function(i){return [i.id, i.controle, i.volume_12mois, i.exceptions, i.revue, i.statut];}),
-      false);
-  };
-  window.icExportMasterData = function() {
-    icGenericExport('MasterData', 'Master data integrity', 'Référentiels',
-      ['ID','Type','Volume 12m','Écarts','Contrôles','Statut'],
-      IC_MASTERDATA.map(function(m){return [m.id, m.type, m.volume_12mois, m.ecarts, m.controles, m.statut];}),
-      true);
-  };
-  window.icExportITGC = function() {
-    icGenericExport('ITGC', 'IT General Controls', 'Maturité COBIT',
-      ['ID','Contrôle','Fréquence','Dernier audit','Maturité','Statut'],
-      IC_ITGC.map(function(i){return [i.id, i.controle, i.frequence, i.dernier_audit, i.maturite+'/5', i.statut];}),
-      false);
-  };
-  window.icExportSensitive = function() {
-    icGenericExport('Sensitive', 'Sensitive transactions', 'Avoirs · Write-offs · Rabais',
-      ['ID','Type','Montant','Demandeur','Validation','Justification','Statut'],
-      IC_SENSITIVE.map(function(s){return [s.id, s.type, fmtMoney(s.montant), s.demandeur, s.validation, s.justification, s.statut];}),
-      true);
-  };
-  window.icExportBCP = function() {
-    icGenericExport('BCP', 'Continuité activité (BCP/DRP)', 'Tests · RTO · RPO',
-      ['ID','Processus','RTO','RPO','Dernier test','Résultat','Maturité'],
-      IC_BCP.map(function(b){return [b.id, b.processus, b.rto, b.rpo, b.dernier_test, b.resultat, b.maturite+'/5'];}),
-      false);
   };
 
   // ════════════════════════════════════════════════════════════════════════
-  // SIDEBAR + TABS INJECTION
+  // INJECTION SIDEBAR + TAB pour le NOUVEAU module Violations
   // ════════════════════════════════════════════════════════════════════════
-  function injectICSidebar() {
-    var sb = document.querySelector('#sc-cco .sb-nav');
-    if (!sb) { console.warn('[IC] sidebar non trouvée'); return; }
-    if (document.getElementById('cnav-ic-doa')) return;
-
-    var section = document.createElement('div');
-    section.innerHTML =
-      '<div class="nav-section">CONTRÔLE INTERNE</div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-doa\')" id="cnav-ic-doa"><span class="nav-icon">🛡️</span>DOA · Délégations<span class="nav-badge nb-g">5</span></div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-sod\')" id="cnav-ic-sod"><span class="nav-icon">⚖️</span>SOD · Incompatibilités<span class="nav-badge nb-r">2</span></div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-prpo\')" id="cnav-ic-prpo"><span class="nav-icon">🛒</span>PR/PO Engagements<span class="nav-badge nb-a">3</span></div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-contrats\')" id="cnav-ic-contrats"><span class="nav-icon">📜</span>Contrats<span class="nav-badge nb-a">3</span></div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-exceptions\')" id="cnav-ic-exceptions"><span class="nav-icon">⚠️</span>Exceptions DOA<span class="nav-badge nb-g">4</span></div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-cloture\')" id="cnav-ic-cloture"><span class="nav-icon">📅</span>Clôture mensuelle<span class="nav-badge nb-a">3</span></div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-reconciliations\')" id="cnav-ic-reconciliations"><span class="nav-icon">🔁</span>Réconciliations<span class="nav-badge nb-a">2</span></div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-inventaires\')" id="cnav-ic-inventaires"><span class="nav-icon">📦</span>Inventaires<span class="nav-badge nb-r">1</span></div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-recouvrement\')" id="cnav-ic-recouvrement"><span class="nav-icon">💸</span>Recouvrement &amp; DSO<span class="nav-badge nb-r">1</span></div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-cash\')" id="cnav-ic-cash"><span class="nav-icon">💰</span>Cash management<span class="nav-badge nb-a">1</span></div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-iam\')" id="cnav-ic-iam"><span class="nav-icon">🔐</span>Accès SI / IAM<span class="nav-badge nb-r">1</span></div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-masterdata\')" id="cnav-ic-masterdata"><span class="nav-icon">🗂️</span>Master data<span class="nav-badge nb-a">9</span></div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-itgc\')" id="cnav-ic-itgc"><span class="nav-icon">🖥️</span>ITGC<span class="nav-badge nb-a">1</span></div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-sensitive\')" id="cnav-ic-sensitive"><span class="nav-icon">🚨</span>Sensitive transactions<span class="nav-badge nb-g">5</span></div>' +
-      '<div class="nav-item" onclick="ccoTab(\'ic-bcp\')" id="cnav-ic-bcp"><span class="nav-icon">🛟</span>BCP / DRP<span class="nav-badge nb-r">1</span></div>';
-    sb.appendChild(section);
-    console.log('[IC] Sidebar Contrôle Interne injectée ✓');
-  }
-
-  function injectICTabs() {
+  function injectViolationsTab() {
     var sc = document.getElementById('sc-cco');
-    if (!sc) return;
-    var tabs = ['ic-doa','ic-sod','ic-prpo','ic-contrats','ic-exceptions','ic-cloture','ic-reconciliations','ic-inventaires','ic-recouvrement','ic-cash','ic-iam','ic-masterdata','ic-itgc','ic-sensitive','ic-bcp'];
-    tabs.forEach(function(tabId) {
-      if (document.getElementById('ctab-' + tabId)) return;
+    if (sc && !document.getElementById('ctab-rgpd-violations')) {
       var div = document.createElement('div');
-      div.id = 'ctab-' + tabId;
+      div.id = 'ctab-rgpd-violations';
       div.className = 'tab-view';
       sc.appendChild(div);
-    });
-    console.log('[IC] 15 tabs IC injectés ✓');
+    }
+
+    // Ajouter dans la sidebar DPO
+    var existingNav = document.getElementById('cnav-rgpd-droits');
+    if (existingNav && !document.getElementById('cnav-rgpd-violations')) {
+      var newNav = document.createElement('div');
+      newNav.className = 'nav-item';
+      newNav.id = 'cnav-rgpd-violations';
+      newNav.setAttribute('onclick', "ccoTab('rgpd-violations')");
+      newNav.innerHTML = '<span class="nav-icon">🚨</span>Violations 72h<span class="nav-badge nb-r">1</span>';
+      existingNav.parentNode.insertBefore(newNav, existingNav.nextSibling);
+    }
+
+    console.log('[DPOx] Module Violations 72h injecté ✓');
   }
 
-  function icInit() {
-    injectICSidebar();
-    injectICTabs();
-    console.log('[IC] Module Contrôle Interne chargé ✓ (15 contrôles)');
+  // CSS keyframes pour animation loader
+  function injectDPOxCSS() {
+    if (document.getElementById('dpox-styles')) return;
+    var s = document.createElement('style');
+    s.id = 'dpox-styles';
+    s.textContent = '@keyframes dpoxLoad { 0%{margin-left:-30%} 100%{margin-left:100%} }';
+    document.head.appendChild(s);
+  }
+
+  function dpoxInit() {
+    injectDPOxCSS();
+    injectViolationsTab();
+    console.log('[DPOx] Enrichissement DPO chargé ✓ (AIPD copilot, Droits copilot, Violations 72h)');
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', icInit);
+    document.addEventListener('DOMContentLoaded', dpoxInit);
   } else {
-    setTimeout(icInit, 250);
+    setTimeout(dpoxInit, 350);
   }
 })();
 
